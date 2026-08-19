@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<section class="hero container">
+    <div class="hero-copy">
+        <p class="eyebrow">Gestión que conecta</p>
+        <h1>Convierte tus ideas en <em>avance real.</em></h1>
+        <p class="hero-text">Nexo reúne usuarios, proyectos y tareas en un mismo lugar para que tu equipo se concentre en lo que importa.</p>
+        <div class="action-row"><a class="button button-primary" href="{% url 'services' %}">Explorar servicios <span aria-hidden="true">→</span></a><a class="text-link" href="{% url 'contact' %}">Cuéntanos tu reto</a></div>
+    </div>
+    <div class="hero-panel" aria-label="Resumen de gestión"><span class="panel-label">Pulso del equipo</span><strong>03</strong><span>proyectos en movimiento</span><div class="progress"><span></span></div><small>+24% de foco este mes</small></div>
+</section>
+<section class="alert-banner container" role="status"><strong>Todo listo para empezar.</strong><span>Conecta tu equipo con una forma más clara de trabajar.</span><a href="{% url 'contact' %}">Contactar →</a></section>
+<section class="section container intro-grid"><div><p class="eyebrow">Un espacio, más claridad</p><h2>Menos ruido.<br><span>Más movimiento.</span></h2></div><p>Desde la primera idea hasta la última tarea, Nexo te ayuda a visualizar el trabajo, ordenar prioridades y mantener a las personas alineadas.</p></section>
+{% endblock %}
