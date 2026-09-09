@@ -1,6 +1,0 @@
-{% extends 'base.html' %}
-{% block title %}Contacto{% endblock %}
-{% block content %}
-<section class="page-hero container"><p class="eyebrow">Contacto</p><h1>Hablemos de lo que quieres <em>construir.</em></h1><p>Cuéntanos un poco sobre tu empresa y nos pondremos en contacto contigo.</p></section>
-<section class="section container contact-layout"><div class="contact-note"><h2>Tu próximo proyecto empieza con una conversación.</h2><p>Estamos disponibles para resolver tus preguntas y encontrar el mejor punto de partida.</p><p class="contact-detail">hola@nexo.example<br>+34 900 000 000</p></div><form class="contact-form" method="post">{% csrf_token %}{% if messages %}{% for message in messages %}<div class="form-message">{{ message }}</div>{% endfor %}{% endif %}<label for="name">Nombre completo</label><input id="name" name="name" type="text" required><label for="email">Correo empresarial</label><input id="email" name="email" type="email" required><label for="company">Empresa</label><input id="company" name="company" type="text"><label for="message">¿Cómo podemos ayudarte?</label><textarea id="message" name="message" rows="5" required></textarea><button class="button button-primary" type="submit">Enviar mensaje <span aria-hidden="true">→</span></button></form></section>
-{% endblock %}

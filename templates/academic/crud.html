@@ -1,0 +1,196 @@
+{% extends 'academic/base.html' %}
+
+{% block title %}{{ page_config.title }} | Gestión Académica{% endblock %}
+
+{% block content %}
+<section class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-bold small mb-1" style="color: #b42318;">Sistema de Gestión Académica</p>
+        <h1 class="display-6 fw-bold mb-1">{{ page_config.title }}</h1>
+        <p class="text-secondary mb-0">Administra los registros mediante la API REST.</p>
+    </div>
+    <!-- Abre el formulario para crear un registro. -->
+    <button id="new-record" class="btn btn-primary px-4" type="button">Nuevo registro</button>
+</section>
+
+<!-- Mensajes de éxito y error de las operaciones CRUD. -->
+<div id="crud-message" class="alert d-none" role="status"></div>
+
+<!-- Formulario reutilizable para crear y editar registros. -->
+<section id="record-form-panel" class="card academic-panel mb-4 d-none">
+    <div class="card-body p-4">
+        <h2 id="form-title" class="h4 mb-3">Nuevo registro</h2>
+        <form id="record-form" class="row g-3"></form>
+    </div>
+</section>
+
+<!-- Tabla que se llena con los datos entregados por la API. -->
+<section class="card academic-panel">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead><tr id="table-head"></tr></thead>
+                <tbody id="table-body"><tr><td class="p-4">Cargando registros...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{{ page_config|json_script:"crud-config" }}
+<script>
+const config = JSON.parse(document.getElementById('crud-config').textContent);
+const apiBase = `/api/${config.endpoint}/`;
+const formPanel = document.getElementById('record-form-panel');
+const form = document.getElementById('record-form');
+const tableHead = document.getElementById('table-head');
+const tableBody = document.getElementById('table-body');
+const message = document.getElementById('crud-message');
+let editingId = null;
+let sources = {};
+
+// Evita insertar directamente texto recibido desde la API dentro del HTML.
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
+    }[character]));
+}
+
+// Muestra avisos de resultado al usuario.
+function showMessage(text, type = 'success') {
+    message.textContent = text;
+    message.className = `alert alert-${type}`;
+}
+
+// Consulta una colección de cualquier endpoint académico.
+async function getList(endpoint) {
+    const response = await fetch(`/api/${endpoint}/`);
+    if (!response.ok) throw new Error('No se pudieron cargar los datos.');
+    const data = await response.json();
+    return data.results || data;
+}
+
+// Convierte cada opción relacionada en un texto legible.
+function labelFor(field, item) {
+    if (field.source === 'teachers' || field.source === 'students') {
+        return `${item.first_name} ${item.last_name}`;
+    }
+    return item.name;
+}
+
+// Carga docentes, estudiantes o asignaturas para los campos select.
+async function loadSources() {
+    for (const field of config.fields.filter(item => item.source)) {
+        if (!sources[field.source]) sources[field.source] = await getList(field.source);
+    }
+}
+
+// Construye dinámicamente los campos del formulario según el módulo.
+function renderForm(record = {}) {
+    form.innerHTML = config.fields.map(field => {
+        if (field.type === 'select') {
+            const options = (sources[field.source] || []).map(item => {
+                const value = field.source === 'teachers' || field.source === 'students' ? item.id : item.id;
+                const selected = String(record[field.name] ?? '') === String(value) ? 'selected' : '';
+                return `<option value="${value}" ${selected}>${escapeHtml(labelFor(field, item))}</option>`;
+            }).join('');
+            return `<div class="col-md-6"><label class="form-label" for="${field.name}">${field.label}</label>
+                <select class="form-select" id="${field.name}" name="${field.name}" required><option value="">Seleccione...</option>${options}</select></div>`;
+        }
+        return `<div class="col-md-6"><label class="form-label" for="${field.name}">${field.label}</label>
+            <input class="form-control" id="${field.name}" name="${field.name}" value="${escapeHtml(record[field.name] || '')}" required></div>`;
+    }).join('') + `<div class="col-12 d-flex gap-2"><button class="btn btn-primary" type="submit">Guardar</button><button class="btn btn-outline-secondary" id="cancel-form" type="button">Cancelar</button></div>`;
+    document.getElementById('cancel-form').addEventListener('click', closeForm);
+}
+
+// Obtiene el texto que se mostrará en cada celda de la tabla.
+function displayValue(column, item) {
+    if (column === 'teacher') return item.teacher ? `${item.teacher.first_name} ${item.teacher.last_name}` : 'Sin docente';
+    if (column === 'student') return item.student ? `${item.student.first_name} ${item.student.last_name}` : '';
+    if (column === 'course') return item.course ? item.course.name : '';
+    return item[column];
+}
+
+// Carga los registros y conecta los botones de editar y eliminar.
+async function loadRecords() {
+    const records = await getList(config.endpoint);
+    tableHead.innerHTML = config.columns.map(column => `<th>${column[1]}</th>`).join('') + '<th class="text-end">Acciones</th>';
+    tableBody.innerHTML = records.length ? records.map(item => {
+        const editData = config.fields.reduce((result, field) => {
+            if (field.name === 'teacher_id') result[field.name] = item.teacher?.id;
+            else if (field.name === 'student_id') result[field.name] = item.student?.id;
+            else if (field.name === 'course_id') result[field.name] = item.course?.id;
+            else result[field.name] = item[field.name];
+            return result;
+        }, {});
+        return `<tr>${config.columns.map(column => `<td>${escapeHtml(displayValue(column[0], item))}</td>`).join('')}
+            <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-primary edit-record" data-id="${item.id || ''}" data-record='${JSON.stringify(editData)}'>Editar</button>
+            <button class="btn btn-sm btn-outline-danger delete-record" data-id="${item.id || ''}">Eliminar</button></td></tr>`;
+    }).join('') : `<tr><td class="p-4 text-secondary" colspan="${config.columns.length + 1}">No hay registros todavía.</td></tr>`;
+    document.querySelectorAll('.edit-record').forEach(button => button.addEventListener('click', () => openEdit(button)));
+    document.querySelectorAll('.delete-record').forEach(button => button.addEventListener('click', () => deleteRecord(button.dataset.id)));
+}
+
+// Prepara un formulario vacío para crear un registro.
+function openNew() {
+    editingId = null;
+    document.getElementById('form-title').textContent = `Nuevo registro de ${config.title.toLowerCase()}`;
+    renderForm();
+    formPanel.classList.remove('d-none');
+    form.querySelector('input, select')?.focus();
+}
+
+// Prepara el formulario con los datos del registro seleccionado.
+function openEdit(button) {
+    editingId = button.dataset.id;
+    document.getElementById('form-title').textContent = 'Editar registro';
+    renderForm(JSON.parse(button.dataset.record));
+    formPanel.classList.remove('d-none');
+    form.querySelector('input, select')?.focus();
+}
+
+// Oculta y limpia el formulario actual.
+function closeForm() {
+    formPanel.classList.add('d-none');
+    form.reset();
+    editingId = null;
+}
+
+// Envía POST o PUT según se trate de un registro nuevo o existente.
+async function saveRecord(event) {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(form).entries());
+    const response = await fetch(editingId ? `${apiBase}${editingId}/` : apiBase, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('No se pudo guardar el registro.');
+    closeForm();
+    showMessage('Registro guardado correctamente.');
+    await loadRecords();
+}
+
+// Solicita confirmación y elimina el registro mediante DELETE.
+async function deleteRecord(id) {
+    if (!id || !confirm('¿Eliminar este registro?')) return;
+    const response = await fetch(`${apiBase}${id}/`, {method: 'DELETE'});
+    if (!response.ok) throw new Error('No se pudo eliminar el registro.');
+    showMessage('Registro eliminado correctamente.');
+    await loadRecords();
+}
+
+// Conecta los eventos e inicializa la tabla al cargar la página.
+document.getElementById('new-record').addEventListener('click', openNew);
+form.addEventListener('submit', event => saveRecord(event).catch(error => showMessage(error.message, 'danger')));
+(async function init() {
+    try {
+        await loadSources();
+        await loadRecords();
+    } catch (error) {
+        showMessage(error.message, 'danger');
+    }
+})();
+</script>
+{% endblock %}
