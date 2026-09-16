@@ -38,6 +38,7 @@
 {% endblock %}
 
 {% block scripts %}
+{% csrf_token %}
 {{ page_config|json_script:"crud-config" }}
 <script>
 const config = JSON.parse(document.getElementById('crud-config').textContent);
@@ -50,6 +51,11 @@ const message = document.getElementById('crud-message');
 let editingId = null;
 let sources = {};
 
+// Django exige este token para las peticiones que modifican datos.
+function getCookie(name) {
+    return document.cookie.split('; ').find(row => row.startsWith(`${name}=`))?.split('=')[1];
+}
+
 // Evita insertar directamente texto recibido desde la API dentro del HTML.
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>'"]/g, character => ({
@@ -61,6 +67,19 @@ function escapeHtml(value) {
 function showMessage(text, type = 'success') {
     message.textContent = text;
     message.className = `alert alert-${type}`;
+}
+
+// Convierte los errores de validación de la API en un mensaje útil.
+async function apiError(response, fallback) {
+    try {
+        const data = await response.json();
+        const details = Object.entries(data)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join(' ');
+        return details ? `${fallback} ${details}` : fallback;
+    } catch {
+        return fallback;
+    }
 }
 
 // Consulta una colección de cualquier endpoint académico.
@@ -163,10 +182,10 @@ async function saveRecord(event) {
     const payload = Object.fromEntries(new FormData(form).entries());
     const response = await fetch(editingId ? `${apiBase}${editingId}/` : apiBase, {
         method: editingId ? 'PUT' : 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
         body: JSON.stringify(payload)
     });
-    if (!response.ok) throw new Error('No se pudo guardar el registro.');
+    if (!response.ok) throw new Error(await apiError(response, 'No se pudo guardar el registro.'));
     closeForm();
     showMessage('Registro guardado correctamente.');
     await loadRecords();
@@ -175,8 +194,11 @@ async function saveRecord(event) {
 // Solicita confirmación y elimina el registro mediante DELETE.
 async function deleteRecord(id) {
     if (!id || !confirm('¿Eliminar este registro?')) return;
-    const response = await fetch(`${apiBase}${id}/`, {method: 'DELETE'});
-    if (!response.ok) throw new Error('No se pudo eliminar el registro.');
+    const response = await fetch(`${apiBase}${id}/`, {
+        method: 'DELETE',
+        headers: {'X-CSRFToken': getCookie('csrftoken')}
+    });
+    if (!response.ok) throw new Error(await apiError(response, 'No se pudo eliminar el registro.'));
     showMessage('Registro eliminado correctamente.');
     await loadRecords();
 }

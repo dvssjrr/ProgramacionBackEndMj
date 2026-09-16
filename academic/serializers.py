@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from .models import Course, Student, StudentCourse, Teacher
 
-
 # Convierte docentes en JSON y valida los datos recibidos por la API.
 class TeacherSerializer(serializers.ModelSerializer):
 	class Meta:
