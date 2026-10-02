@@ -1,0 +1,1 @@
+"""API de venta de entradas para eventos."""
