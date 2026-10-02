@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from .filters import EventFilter, SectorFilter
 from .models import CartItem, Event, Order, Sector, Ticket, Venue
-from .permissions import IsOrganizer, PublicReadOrganizerWrite, is_organizer
+from .permissions import IsOrganizer, PublicReadOrganizerWrite, is_master, is_organizer
 from .serializers import (
     CartItemSerializer, EventSerializer, OrderSerializer, OrderStatusSerializer,
     RoleTokenObtainPairSerializer, SectorSerializer, SpectatorRegistrationSerializer,
@@ -61,7 +61,11 @@ class EventViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Deja la lectura pública y limita las escrituras a eventos propios."""
         queryset = super().get_queryset()
-        if self.request.method not in ('GET', 'HEAD', 'OPTIONS') and is_organizer(self.request.user):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return queryset.filter(is_published=True)
+        if is_master(self.request.user):
+            return queryset
+        if is_organizer(self.request.user):
             return queryset.filter(organizer=self.request.user)
         return queryset
 
@@ -72,9 +76,8 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='gestion', permission_classes=[IsOrganizer])
     def management(self, request):
         """Lista solo los eventos administrables por el organizador autenticado."""
-        events = Event.objects.filter(organizer=request.user).select_related(
-            'venue', 'organizer',
-        ).prefetch_related('sectors')
+        events = Event.objects.all() if is_master(request.user) else Event.objects.filter(organizer=request.user)
+        events = events.select_related('venue', 'organizer').prefetch_related('sectors')
         return Response(self.get_serializer(events, many=True).data)
 
     def destroy(self, request, *args, **kwargs):
@@ -106,6 +109,8 @@ class VenueViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Limita la administración a recintos del usuario autenticado."""
+        if is_master(self.request.user):
+            return Venue.objects.order_by('name')
         return Venue.objects.filter(organizer=self.request.user).order_by('name')
 
     def perform_create(self, serializer):
@@ -134,6 +139,8 @@ class SectorViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filtra las escrituras por propietario y deja el catálogo legible."""
         queryset = Sector.objects.select_related('event').all()
+        if is_master(self.request.user):
+            return queryset
         if self.request.method not in ('GET', 'HEAD', 'OPTIONS') and is_organizer(self.request.user):
             return queryset.filter(event__organizer=self.request.user)
         return queryset
@@ -141,7 +148,7 @@ class SectorViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Valida propiedad y sincroniza el stock inicial con el total."""
         event = serializer.validated_data['event']
-        if event.organizer_id != self.request.user.id:
+        if event.organizer_id != self.request.user.id and not is_master(self.request.user):
             raise PermissionDenied('El evento debe pertenecer al organizador.')
         serializer.save(available_tickets=serializer.validated_data['total_tickets'])
 
@@ -179,6 +186,8 @@ class PurchaseViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """Muestra compras propias a espectadores y ventas propias a organizadores."""
         queryset = Order.objects.prefetch_related('items__tickets', 'items__sector__event')
+        if is_master(self.request.user):
+            return queryset
         if is_organizer(self.request.user):
             return queryset.annotate(
                 organizer_count=Count('items__sector__event__organizer', distinct=True),

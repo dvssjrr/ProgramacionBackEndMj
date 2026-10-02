@@ -3,9 +3,16 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
+def is_master(user):
+    return bool(user and user.is_authenticated and user.is_superuser)
+
+
 def is_organizer(user):
     """Reconoce staff y miembros del grupo Organizador."""
-    return bool(user and user.is_authenticated and (user.is_staff or user.groups.filter(name='Organizador').exists()))
+    return bool(
+        user and user.is_authenticated
+        and (is_master(user) or user.is_staff or user.groups.filter(name='Organizador').exists())
+    )
 
 
 class IsOrganizer(BasePermission):

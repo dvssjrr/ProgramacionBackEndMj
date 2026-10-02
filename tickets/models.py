@@ -28,6 +28,7 @@ class Event(models.Model):
     description = models.TextField(blank=True)
     venue = models.ForeignKey(Venue, on_delete=models.PROTECT, related_name='events')
     organizer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='organized_events')
+    is_published = models.BooleanField(default=True)
 
     def __str__(self):
         return f'{self.name} - {self.artist}'

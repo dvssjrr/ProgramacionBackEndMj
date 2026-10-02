@@ -7,11 +7,16 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from .models import Cart, CartItem, Event, Order, OrderItem, Sector, Ticket, Venue
+from .permissions import is_master
 
 
 def user_role(user):
     """Calcula el claim de rol utilizado por la API."""
-    return 'organizador' if user.is_staff or user.groups.filter(name='Organizador').exists() else 'espectador'
+    if is_master(user):
+        return 'maestro'
+    if user.is_staff or user.groups.filter(name='Organizador').exists():
+        return 'organizador'
+    return 'espectador'
 
 
 class RoleTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -60,7 +65,7 @@ class TokenPairResponseSerializer(serializers.Serializer):
 
     access = serializers.CharField()
     refresh = serializers.CharField()
-    role = serializers.ChoiceField(choices=['espectador', 'organizador'])
+    role = serializers.ChoiceField(choices=['espectador', 'organizador', 'maestro'])
     username = serializers.CharField()
 
 
@@ -86,7 +91,7 @@ class SectorSerializer(serializers.ModelSerializer):
     def validate_event(self, event):
         """Evita que una localidad se asocie a eventos de otro organizador."""
         request = self.context.get('request')
-        if request and event.organizer_id != request.user.id:
+        if request and event.organizer_id != request.user.id and not is_master(request.user):
             raise serializers.ValidationError('El evento debe pertenecer al organizador.')
         return event
 
@@ -117,13 +122,13 @@ class EventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        fields = ['id', 'name', 'artist', 'starts_at', 'description', 'venue', 'venue_name', 'organizer', 'sectors']
+        fields = ['id', 'name', 'artist', 'starts_at', 'description', 'venue', 'venue_name', 'organizer', 'sectors', 'is_published']
         read_only_fields = ['id', 'organizer']
 
     def validate_venue(self, venue):
         """Evita asociar un evento a un recinto de otro organizador."""
         request = self.context.get('request')
-        if request and venue.organizer_id != request.user.id:
+        if request and venue.organizer_id != request.user.id and not is_master(request.user):
             raise serializers.ValidationError('Solo puedes usar recintos propios.')
         return venue
 

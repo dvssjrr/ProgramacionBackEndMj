@@ -23,10 +23,6 @@ ejecutarse de nuevo sin duplicar eventos ni restablecer entradas vendidas.
 
 La página de eventos está en `http://127.0.0.1:8000/`, el panel organizador en
 `http://127.0.0.1:8000/organizadores/` y Swagger en `http://127.0.0.1:8000/api/docs/`.
-Configura `STUDENT_FULL_NAME`, `STUDENT_SECTION` y `STUDENT_YEAR` en `.env`
-para mostrar los datos reales del alumno en el pie de página.
-En la portada se puede registrar un espectador, iniciar/cerrar sesión, agregar
-o cambiar cantidades del carrito persistente, pagar y revisar las entradas UUID.
 
 ## API
 - `GET /api/eventos/gestion/`: lista los eventos del organizador autenticado.
@@ -53,3 +49,7 @@ al carro: solo se descuenta al pagar y se repone al cancelar una compra pagada.
 ```
 
 Django crea una base PostgreSQL temporal para las pruebas.
+
+Maestro: damian / damian123
+Organizador: organizador / organizador123
+Usuario: usuario / usuario123

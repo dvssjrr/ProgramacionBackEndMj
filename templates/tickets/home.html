@@ -150,14 +150,8 @@
     <header class="site-header">
         <div class="header-inner">
             <a class="brand" href="/" aria-label="Tickets, inicio"><span class="brand-mark" aria-hidden="true">T</span>TICKETS</a>
-            <nav class="header-links" aria-label="Navegación principal">
-                <a href="#eventos">Eventos</a>
-                <a href="/api/docs/">API</a>
-                <a class="organizer-link" href="/organizadores/">Organizadores</a>
-            </nav>
             <div class="account-actions">
                 <span class="account-status" id="account-status" hidden></span>
-                <button class="account-button" id="tickets-open" type="button" hidden>Mis entradas</button>
                 <button class="account-button primary" id="login-open" type="button">Iniciar sesión</button>
                 <button class="account-button" id="logout-button" type="button" hidden>Cerrar sesión</button>
                 <button class="account-button" id="cart-open" type="button" aria-label="Abrir carrito">Carrito <span class="cart-count" id="cart-count">0</span></button>
@@ -170,7 +164,6 @@
                 <p class="eyebrow">Música en vivo · Entradas online</p>
                 <h1 id="hero-title">La próxima noche empieza con Tickets.</h1>
                 <p class="hero-copy">Encuentra tu próximo concierto, compara localidades y guarda tus entradas en un solo lugar.</p>
-                <a class="hero-cta" href="#eventos">Explorar eventos <span aria-hidden="true">&rarr;</span></a>
             </div>
         </section>
         <section class="content" id="eventos" aria-labelledby="catalog-title">
@@ -205,29 +198,7 @@
                 </label>
                 <button class="account-button primary" type="submit">Entrar</button>
                 <p class="form-message" id="login-message" role="status"></p>
-                <button class="text-button" id="register-open" type="button">Crear cuenta de espectador</button>
-            </form>
-        </div>
-    </dialog>
-    <dialog id="register-dialog" aria-labelledby="register-title">
-        <div class="dialog-head">
-            <h2 id="register-title">Crear cuenta</h2>
-            <button class="dialog-close" type="button" data-close-dialog="register-dialog" aria-label="Cerrar">×</button>
-        </div>
-        <div class="dialog-body">
-            <form class="login-form" id="register-form">
-                <label class="form-field" for="register-username">Usuario
-                    <input id="register-username" name="username" autocomplete="username" required maxlength="150">
-                </label>
-                <label class="form-field" for="register-email">Correo electrónico
-                    <input id="register-email" name="email" type="email" autocomplete="email">
-                </label>
-                <label class="form-field" for="register-password">Contraseña
-                    <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
-                </label>
-                <button class="account-button primary" type="submit">Crear cuenta</button>
-                <p class="form-message" id="register-message" role="status">La cuenta nueva tendrá rol de espectador.</p>
-                <button class="text-button" id="login-from-register" type="button">Ya tengo cuenta</button>
+                <p class="form-message">Cuentas demo: <strong>damian / damian123</strong> · <strong>organizador / organizador123</strong> · <strong>usuario / usuario123</strong></p>
             </form>
         </div>
     </dialog>
@@ -238,6 +209,7 @@
         </div>
         <div class="dialog-body">
             <div class="cart-items" id="cart-items"></div>
+            <button class="account-button tickets-button" id="tickets-open" type="button" hidden>Mis entradas</button>
             <div class="cart-total"><span>Total</span><span id="cart-total">$0</span></div>
             <p class="form-message" id="cart-message" role="status"></p>
             <div class="receipt" id="purchase-receipt" hidden></div>
@@ -264,13 +236,10 @@
         const eventSearch = document.querySelector('#event-search');
         const eventCount = document.querySelector('#event-count');
         const loginDialog = document.querySelector('#login-dialog');
-        const registerDialog = document.querySelector('#register-dialog');
         const cartDialog = document.querySelector('#cart-dialog');
         const ticketsDialog = document.querySelector('#tickets-dialog');
         const loginForm = document.querySelector('#login-form');
-        const registerForm = document.querySelector('#register-form');
         const loginMessage = document.querySelector('#login-message');
-        const registerMessage = document.querySelector('#register-message');
         const cartList = document.querySelector('#cart-items');
         const cartMessage = document.querySelector('#cart-message');
         const cartCount = document.querySelector('#cart-count');
@@ -316,9 +285,12 @@
             document.querySelector('#tickets-open').hidden = !signedIn;
             const status = document.querySelector('#account-status');
             status.hidden = !signedIn;
-            status.textContent = signedIn
-                ? `${currentUsername || 'Cuenta'} · ${currentRole === 'organizador' ? 'Organizador' : 'Espectador'}`
-                : '';
+            const roleLabel = currentRole === 'maestro'
+                ? 'Maestro'
+                : currentRole === 'organizador'
+                    ? 'Organizador'
+                    : 'Espectador';
+            status.textContent = signedIn ? `${currentUsername || 'Cuenta'} · ${roleLabel}` : '';
         }
 
         function setSession(data, username) {
@@ -645,11 +617,8 @@
         async function finishAuthentication(data, username) {
             setSession(data, username);
             loginDialog.close();
-            registerDialog.close();
             loginForm.reset();
-            registerForm.reset();
             showMessage(loginMessage, '');
-            showMessage(registerMessage, 'La cuenta nueva tendrá rol de espectador.');
             await loadCart();
             if (pendingAdd) {
                 const item = pendingAdd;
@@ -673,24 +642,14 @@
                 showMessage(loginMessage, apiError(payload), true);
                 return;
             }
-            await finishAuthentication(payload, username);
-        });
-
-        registerForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const values = Object.fromEntries(new FormData(registerForm));
-            showMessage(registerMessage, 'Creando cuenta…');
-            const response = await fetch('/api/registro/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(values),
-            });
-            const payload = await readJson(response);
-            if (!response.ok) {
-                showMessage(registerMessage, apiError(payload), true);
+            if (payload.role === 'maestro' || payload.role === 'organizador') {
+                setSession(payload, username);
+                loginDialog.close();
+                showMessage(loginMessage, '');
+                window.location.href = '/organizadores/';
                 return;
             }
-            await finishAuthentication(payload, values.username);
+            await finishAuthentication(payload, username);
         });
 
         for (const closeButton of document.querySelectorAll('[data-close-dialog]')) {
@@ -702,14 +661,6 @@
             });
         }
         document.querySelector('#login-open').addEventListener('click', () => loginDialog.showModal());
-        document.querySelector('#register-open').addEventListener('click', () => {
-            loginDialog.close();
-            registerDialog.showModal();
-        });
-        document.querySelector('#login-from-register').addEventListener('click', () => {
-            registerDialog.close();
-            loginDialog.showModal();
-        });
         document.querySelector('#cart-open').addEventListener('click', async () => {
             if (!accessToken) {
                 loginDialog.showModal();

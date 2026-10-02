@@ -78,20 +78,31 @@ class TicketsAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'TICKETS')
         self.assertContains(response, 'Iniciar sesión')
-        self.assertContains(response, 'Crear cuenta de espectador')
+        self.assertNotContains(response, 'Crear cuenta de espectador')
         self.assertContains(response, 'Abrir carrito')
         self.assertContains(response, 'Pagar entradas')
-        self.assertContains(response, 'href="/organizadores/"')
+        self.assertNotContains(response, 'href="/organizadores/"')
         self.assertNotContains(response, 'Gestión Académica')
 
-    def test_organizer_panel_has_login_and_django_admin_route_is_removed(self):
+    def test_master_and_organizer_roles_are_distinct_from_customer(self):
+        user_model = get_user_model()
+        master = user_model.objects.create_user(username='damian', password='damian123', is_staff=True, is_superuser=True)
+        organizer_group, _ = Group.objects.get_or_create(name='Organizador')
+        organizer = user_model.objects.create_user(username='organizador', password='organizador123')
+        organizer.groups.add(organizer_group)
+
+        self.assertEqual(master.is_staff, True)
+        self.assertEqual(organizer.groups.filter(name='Organizador').exists(), True)
+        self.assertEqual(self.viewer.groups.filter(name='Organizador').exists(), False)
+
+    def test_organizer_panel_has_login_and_unknown_admin_route_returns_home(self):
         panel = self.client.get('/organizadores/')
 
         self.assertEqual(panel.status_code, 200)
         self.assertContains(panel, 'Administra tus eventos')
         self.assertContains(panel, 'organizer-login-form')
         self.assertEqual(self.client.get('/api/eventos/gestion/').status_code, 401)
-        self.assertEqual(self.client.get('/admin/').status_code, 404)
+        self.assertRedirects(self.client.get('/admin/'), '/', fetch_redirect_response=False)
 
     def test_not_found_page_redirects_to_home(self):
         response = self.client.get('/ruta-inexistente/')
@@ -102,6 +113,56 @@ class TicketsAPITests(TestCase):
     def test_catalog_is_public_but_cart_requires_authentication(self):
         self.assertEqual(self.client.get('/api/eventos/').status_code, 200)
         self.assertEqual(self.client.get('/api/carro-tickets/').status_code, 401)
+
+    def test_unpublished_events_are_hidden_from_catalog_but_kept_in_organizer_management(self):
+        venue = Venue.objects.create(
+            name='Recinto oculto', address='Calle 1', capacity=50, organizer=self.organizer,
+        )
+        hidden_event = Event.objects.create(
+            name='Evento archivado', artist='Artista', starts_at=timezone.now(),
+            venue=venue, organizer=self.organizer, is_published=False,
+        )
+        self.assertNotContains(self.client.get('/api/eventos/'), 'Evento archivado')
+
+        self.client.force_authenticate(self.organizer)
+        managed_events = self.client.get('/api/eventos/gestion/')
+        self.assertEqual(managed_events.status_code, 200)
+        self.assertEqual(managed_events.data[0]['id'], hidden_event.id)
+
+    def test_demo_account_command_activates_accounts_and_sets_login_passwords(self):
+        call_command('seed_demo_users')
+        user_model = get_user_model()
+        for username, password in (
+            ('damian', 'damian123'),
+            ('organizador', 'organizador123'),
+            ('usuario', 'usuario123'),
+        ):
+            account = user_model.objects.get(username=username)
+            self.assertTrue(account.is_active)
+            self.assertTrue(account.check_password(password))
+
+    def test_master_can_manage_other_organizers_events_venues_and_sales(self):
+        venue = Venue.objects.create(
+            name='Recinto de organizador', address='Calle 2', capacity=80, organizer=self.organizer,
+        )
+        event = Event.objects.create(
+            name='Evento de organizador', artist='Artista', starts_at=timezone.now(),
+            venue=venue, organizer=self.organizer,
+        )
+        order = Order.objects.create(user=self.viewer, total='25000.00')
+        master = get_user_model().objects.create_superuser(username='master', password='secret123')
+        self.client.force_authenticate(master)
+
+        managed_events = self.client.get('/api/eventos/gestion/')
+        self.assertEqual([entry['id'] for entry in managed_events.data], [event.id])
+        self.assertEqual(self.client.get('/api/recintos/').data[0]['id'], venue.id)
+        sales = self.client.get('/api/compras/')
+        self.assertEqual([entry['id'] for entry in sales.data], [order.id])
+        published = self.client.patch(
+            f'/api/eventos/{event.id}/', {'is_published': True}, format='json',
+        )
+        self.assertEqual(published.status_code, 200)
+        self.assertTrue(published.data['is_published'])
 
     def test_jwt_contains_the_user_role(self):
         response = self.client.post(
