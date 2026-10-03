@@ -16,6 +16,7 @@ class Venue(models.Model):
     organizer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='venues')
 
     def __str__(self):
+        """Usa el nombre del recinto en la interfaz administrativa."""
         return self.name
 
 
@@ -31,6 +32,7 @@ class Event(models.Model):
     is_published = models.BooleanField(default=True)
 
     def __str__(self):
+        """Identifica el evento junto con su artista."""
         return f'{self.name} - {self.artist}'
 
 
@@ -48,6 +50,7 @@ class Sector(models.Model):
         ordering = ['event__starts_at', 'name']
 
     def __str__(self):
+        """Identifica la localidad dentro de su evento."""
         return f'{self.event.name} - {self.name}'
 
 
@@ -102,6 +105,7 @@ class OrderItem(models.Model):
 
     @property
     def subtotal(self):
+        """Calcula el valor histórico usando el precio congelado al comprar."""
         return self.unit_price * self.quantity
 
 

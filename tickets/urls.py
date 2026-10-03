@@ -1,3 +1,5 @@
+"""Rutas REST para cartelera, organización, carros y entradas."""
+
 from rest_framework.routers import DefaultRouter
 
 from .views import CartItemViewSet, EventViewSet, MyTicketViewSet, PurchaseViewSet, SectorViewSet, VenueViewSet

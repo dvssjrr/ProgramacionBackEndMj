@@ -40,6 +40,11 @@ class TicketPurchaseTests(TestCase):
         cart.refresh_from_db()
         self.assertEqual(cart.status, Cart.Status.ACTIVE)
         self.assertFalse(cart.items.exists())
+        with self.assertRaises(ValidationError):
+            pay_cart(self.customer)
+        self.assertEqual(Order.objects.count(), 1)
+        self.sector.refresh_from_db()
+        self.assertEqual(self.sector.available_tickets, 1)
 
         change_order_status(order, Order.Status.CANCELLED)
         self.sector.refresh_from_db()
@@ -72,7 +77,7 @@ class TicketsAPITests(TestCase):
         self.organizer.groups.add(organizer_group)
         self.client = APIClient()
 
-    def test_home_page_is_the_ticket_catalog_not_the_academic_crud(self):
+    def test_home_page_has_the_ticket_storefront_and_simple_navigation(self):
         response = self.client.get('/')
 
         self.assertEqual(response.status_code, 200)
@@ -82,7 +87,6 @@ class TicketsAPITests(TestCase):
         self.assertContains(response, 'Abrir carrito')
         self.assertContains(response, 'Pagar entradas')
         self.assertNotContains(response, 'href="/organizadores/"')
-        self.assertNotContains(response, 'Gestión Académica')
 
     def test_master_and_organizer_roles_are_distinct_from_customer(self):
         user_model = get_user_model()
@@ -91,9 +95,9 @@ class TicketsAPITests(TestCase):
         organizer = user_model.objects.create_user(username='organizador', password='organizador123')
         organizer.groups.add(organizer_group)
 
-        self.assertEqual(master.is_staff, True)
+        self.assertTrue(master.is_staff)
         self.assertEqual(organizer.groups.filter(name='Organizador').exists(), True)
-        self.assertEqual(self.viewer.groups.filter(name='Organizador').exists(), False)
+        self.assertFalse(self.viewer.groups.filter(name='Organizador').exists())
 
     def test_organizer_panel_has_login_and_unknown_admin_route_returns_home(self):
         panel = self.client.get('/organizadores/')
@@ -122,7 +126,16 @@ class TicketsAPITests(TestCase):
             name='Evento archivado', artist='Artista', starts_at=timezone.now(),
             venue=venue, organizer=self.organizer, is_published=False,
         )
+        hidden_sector = Sector.objects.create(
+            event=hidden_event, name='General', price='10000.00', total_tickets=5, available_tickets=5,
+        )
         self.assertNotContains(self.client.get('/api/eventos/'), 'Evento archivado')
+        self.assertEqual(self.client.get('/api/sectores/').data, [])
+        self.client.force_authenticate(self.viewer)
+        add_hidden_sector = self.client.post(
+            '/api/carro-tickets/', {'sector_id': hidden_sector.id, 'quantity': 1}, format='json',
+        )
+        self.assertEqual(add_hidden_sector.status_code, 400)
 
         self.client.force_authenticate(self.organizer)
         managed_events = self.client.get('/api/eventos/gestion/')

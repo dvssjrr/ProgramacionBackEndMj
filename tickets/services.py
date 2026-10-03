@@ -10,6 +10,7 @@ from .models import Cart, Order, OrderItem, Sector, Ticket
 def pay_cart(user):
     """Valida stock con bloqueos, crea orden pagada, descuenta y emite tickets."""
     cart, _ = Cart.objects.get_or_create(user=user)
+    cart = Cart.objects.select_for_update().get(pk=cart.pk)
     cart_items = list(cart.items.select_related('sector', 'sector__event').order_by('sector_id'))
     if not cart_items:
         raise ValidationError('El carro está vacío.')

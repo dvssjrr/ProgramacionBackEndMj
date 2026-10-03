@@ -13,13 +13,15 @@ archivo `.env` no se sube al repositorio.
 ```powershell
 .\env\Scripts\python.exe -m pip install -r requirements.txt
 .\env\Scripts\python.exe manage.py migrate
-.\env\Scripts\python.exe manage.py createsuperuser
-.\env\Scripts\python.exe manage.py seed_demo_events
+.\env\Scripts\python.exe manage.py seed_demo_users
 .\env\Scripts\python.exe manage.py runserver
 ```
 
-`seed_demo_events` crea una cartelera ficticia con stock inicial; puede
-ejecutarse de nuevo sin duplicar eventos ni restablecer entradas vendidas.
+`seed_demo_users` crea las cuentas locales de maestro, organizador y espectador
+indicadas al final de esta guía. Cambia esas contraseñas antes de cualquier uso
+fuera de la evaluación. `seed_demo_events` es opcional: crea una cartelera
+ficticia con stock inicial y puede ejecutarse de nuevo sin duplicar eventos ni
+restablecer entradas vendidas.
 
 La página de eventos está en `http://127.0.0.1:8000/`, el panel organizador en
 `http://127.0.0.1:8000/organizadores/` y Swagger en `http://127.0.0.1:8000/api/docs/`.
@@ -38,9 +40,13 @@ La página de eventos está en `http://127.0.0.1:8000/`, el panel organizador en
 - `POST /api/registro/`: crea una cuenta de espectador y entrega access/refresh.
 - `/api/schema/`: esquema OpenAPI.
 
-La cuenta creada con `createsuperuser` puede ingresar al panel organizador.
-Los usuarios normales reciben el rol `espectador`. El stock no se reserva al agregar
-al carro: solo se descuenta al pagar y se repone al cancelar una compra pagada.
+El usuario `damian` administra todos los eventos desde el panel; `organizador`
+gestiona solo sus recursos y `usuario` compra entradas. Las contraseñas de
+demostración se indican al final. No uses estas cuentas en un despliegue público:
+`seed_demo_users` las crea o restablece con credenciales conocidas.
+
+Los usuarios registrados reciben el rol `espectador`. El stock no se reserva al
+agregar al carro: solo se descuenta al pagar y se repone al cancelar una compra pagada.
 
 ## Pruebas
 

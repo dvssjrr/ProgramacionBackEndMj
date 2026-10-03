@@ -36,6 +36,7 @@ class SpectatorRegistrationView(APIView):
 
     @extend_schema(request=SpectatorRegistrationSerializer, responses={201: TokenPairResponseSerializer})
     def post(self, request):
+        """Registra solo espectadores y emite sus tokens de acceso iniciales."""
         serializer = SpectatorRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -75,7 +76,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='gestion', permission_classes=[IsOrganizer])
     def management(self, request):
-        """Lista solo los eventos administrables por el organizador autenticado."""
+        """Lista los eventos propios del organizador o todos para el maestro."""
         events = Event.objects.all() if is_master(request.user) else Event.objects.filter(organizer=request.user)
         events = events.select_related('venue', 'organizer').prefetch_related('sectors')
         return Response(self.get_serializer(events, many=True).data)
@@ -108,7 +109,7 @@ class VenueViewSet(viewsets.ModelViewSet):
     queryset = Venue.objects.all()
 
     def get_queryset(self):
-        """Limita la administración a recintos del usuario autenticado."""
+        """Muestra recintos propios al organizador y todos al maestro."""
         if is_master(self.request.user):
             return Venue.objects.order_by('name')
         return Venue.objects.filter(organizer=self.request.user).order_by('name')
@@ -137,11 +138,13 @@ class SectorViewSet(viewsets.ModelViewSet):
     ordering_fields = ['price', 'available_tickets']
 
     def get_queryset(self):
-        """Filtra las escrituras por propietario y deja el catálogo legible."""
+        """Publica localidades activas y limita escrituras a su propietario."""
         queryset = Sector.objects.select_related('event').all()
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return queryset.filter(event__is_published=True)
         if is_master(self.request.user):
             return queryset
-        if self.request.method not in ('GET', 'HEAD', 'OPTIONS') and is_organizer(self.request.user):
+        if is_organizer(self.request.user):
             return queryset.filter(event__organizer=self.request.user)
         return queryset
 

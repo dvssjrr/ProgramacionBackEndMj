@@ -1,3 +1,5 @@
+"""Rutas de páginas HTML, autenticación y documentación de la API."""
+
 from django.urls import include, path
 from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView

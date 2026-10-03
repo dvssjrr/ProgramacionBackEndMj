@@ -42,9 +42,12 @@ DEMO_EVENTS = [
 
 
 class Command(BaseCommand):
+    """Carga una cartelera ficticia para probar la venta de entradas."""
+
     help = 'Crea eventos de muestra y stock inicial sin modificar inventario existente.'
 
     def handle(self, *args, **options):
+        """Crea eventos y localidades faltantes sin reponer stock existente."""
         user_model = get_user_model()
         organizer, created = user_model.objects.get_or_create(
             username='tickets-demo-organizer',

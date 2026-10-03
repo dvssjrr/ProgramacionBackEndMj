@@ -24,11 +24,13 @@ class RoleTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @classmethod
     def get_token(cls, user):
+        """Incluye el rol del usuario como claim verificable del JWT."""
         token = super().get_token(user)
         token['role'] = user_role(user)
         return token
 
     def validate(self, attrs):
+        """Devuelve access y refresh junto con el rol calculado del usuario."""
         data = super().validate(attrs)
         data['role'] = user_role(self.user)
         return data
@@ -150,6 +152,8 @@ class CartItemSerializer(serializers.ModelSerializer):
         """Exige sector al agregar un ítem; las lecturas muestran su detalle."""
         if self.instance is None and 'sector' not in attrs:
             raise serializers.ValidationError({'sector_id': 'Este campo es obligatorio.'})
+        if self.instance is None and not attrs['sector'].event.is_published:
+            raise serializers.ValidationError({'sector_id': 'El evento no está disponible para la venta.'})
         return attrs
 
     def create(self, validated_data):
