@@ -380,6 +380,26 @@ class TicketsAPITests(TestCase):
         cart.items.all().delete()
         self.assertEqual(self.client.delete(f'/api/eventos/{event_id}/').status_code, 204)
 
+    def test_organizer_cannot_create_event_with_past_start_time(self):
+        venue = Venue.objects.create(
+            name='Recinto futuro', address='Calle 3', capacity=100, organizer=self.organizer,
+        )
+        self.client.force_authenticate(self.organizer)
+
+        response = self.client.post(
+            '/api/eventos/',
+            {
+                'name': 'Evento pasado',
+                'artist': 'Banda',
+                'starts_at': timezone.now() - timezone.timedelta(days=1),
+                'venue': venue.pk,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('starts_at', response.data)
+
     def test_sector_total_edit_preserves_sold_inventory_and_blocks_unsafe_delete(self):
         venue = Venue.objects.create(
             name='Arena Edición', address='Calle Stock', capacity=50, organizer=self.organizer,

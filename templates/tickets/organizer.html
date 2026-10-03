@@ -412,6 +412,11 @@
             return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Number(value));
         }
 
+        function localDateTimeValue(value = new Date()) {
+            const date = new Date(value);
+            return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        }
+
         function renderEvents() {
             const query = eventSearch.value.trim().toLocaleLowerCase('es');
             const filtered = events.filter(event => `${event.name} ${event.artist} ${event.venue_name}`.toLocaleLowerCase('es').includes(query));
@@ -433,7 +438,9 @@
             document.querySelector('#event-name').value = event?.name || '';
             document.querySelector('#event-artist').value = event?.artist || '';
             document.querySelector('#event-description').value = event?.description || '';
-            document.querySelector('#event-starts').value = event ? new Date(event.starts_at).toISOString().slice(0, 16) : '';
+            const startsInput = document.querySelector('#event-starts');
+            startsInput.min = localDateTimeValue();
+            startsInput.value = event ? localDateTimeValue(event.starts_at) : '';
             const select = document.querySelector('#event-venue');
             select.replaceChildren();
             for (const venue of venues) {
@@ -489,7 +496,7 @@
             });
             const data = await json(response);
             if (!response.ok) {
-                message(loginMessage, errorText(data), true);
+                message(loginMessage, 'Usuario o contraseña incorrectos. Inténtalo de nuevo.', true);
                 return;
             }
             if (!['organizador', 'maestro'].includes(data.role)) {

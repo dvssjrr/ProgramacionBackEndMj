@@ -5,6 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 
 from .models import Cart, CartItem, Event, Order, OrderItem, Sector, Ticket, Venue
 from .permissions import is_master
@@ -126,6 +127,12 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = ['id', 'name', 'artist', 'starts_at', 'description', 'venue', 'venue_name', 'organizer', 'sectors', 'is_published']
         read_only_fields = ['id', 'organizer']
+
+    def validate_starts_at(self, starts_at):
+        """Rechaza eventos nuevos o reprogramados a una fecha pasada."""
+        if starts_at <= timezone.now():
+            raise serializers.ValidationError('La fecha y hora deben ser futuras.')
+        return starts_at
 
     def validate_venue(self, venue):
         """Evita asociar un evento a un recinto de otro organizador."""

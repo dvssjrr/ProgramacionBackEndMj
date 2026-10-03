@@ -639,7 +639,7 @@
             });
             const payload = await readJson(response);
             if (!response.ok) {
-                showMessage(loginMessage, apiError(payload), true);
+                showMessage(loginMessage, 'Usuario o contraseña incorrectos. Inténtalo de nuevo.', true);
                 return;
             }
             if (payload.role === 'maestro' || payload.role === 'organizador') {
