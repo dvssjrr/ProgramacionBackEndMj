@@ -78,6 +78,8 @@ class VenueSerializer(serializers.ModelSerializer):
     organizer = serializers.StringRelatedField(read_only=True)
 
     class Meta:
+        """Limita los campos del recinto y deja su propietario como solo lectura."""
+
         model = Venue
         fields = ['id', 'name', 'address', 'capacity', 'organizer']
         read_only_fields = ['id', 'organizer']
@@ -87,6 +89,8 @@ class SectorSerializer(serializers.ModelSerializer):
     """Valida la localidad y protege el stock de cambios directos por API."""
 
     class Meta:
+        """Protege el stock disponible de cambios enviados directamente."""
+
         model = Sector
         fields = ['id', 'event', 'name', 'price', 'total_tickets', 'available_tickets']
         read_only_fields = ['id', 'available_tickets']
@@ -124,6 +128,8 @@ class EventSerializer(serializers.ModelSerializer):
     sectors = SectorSerializer(many=True, read_only=True)
 
     class Meta:
+        """Expone los datos del evento, sus localidades y su visibilidad."""
+
         model = Event
         fields = ['id', 'name', 'artist', 'starts_at', 'description', 'venue', 'venue_name', 'organizer', 'sectors', 'is_published']
         read_only_fields = ['id', 'organizer']
@@ -151,6 +157,8 @@ class CartItemSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
+        """Define los campos de una localidad agregada al carro."""
+
         model = CartItem
         fields = ['id', 'sector', 'sector_id', 'quantity']
         read_only_fields = ['id']
@@ -184,6 +192,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
     tickets = serializers.SerializerMethodField()
 
     class Meta:
+        """Incluye el precio histórico y las entradas de cada línea de compra."""
+
         model = OrderItem
         fields = ['id', 'event_name', 'sector_name', 'unit_price', 'quantity', 'subtotal', 'tickets']
 
@@ -198,6 +208,8 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
 
     class Meta:
+        """Expone el resumen y las líneas de una orden."""
+
         model = Order
         fields = ['id', 'status', 'total', 'created_at', 'updated_at', 'items']
 
@@ -216,5 +228,7 @@ class TicketSerializer(serializers.ModelSerializer):
     sector = serializers.CharField(source='order_item.sector_name', read_only=True)
 
     class Meta:
+        """Devuelve el código y los datos necesarios para identificar la entrada."""
+
         model = Ticket
         fields = ['code', 'event', 'artist', 'sector', 'status', 'issued_at']

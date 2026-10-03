@@ -12,6 +12,8 @@ class EventFilter(django_filters.FilterSet):
     starts_before = django_filters.IsoDateTimeFilter(field_name='starts_at', lookup_expr='lte')
 
     class Meta:
+        """Define el modelo y el filtro directo disponible para eventos."""
+
         model = Event
         fields = ['venue']
 
@@ -23,5 +25,7 @@ class SectorFilter(django_filters.FilterSet):
     max_price = django_filters.NumberFilter(field_name='price', lookup_expr='lte')
 
     class Meta:
+        """Define el modelo y el filtro directo disponible para localidades."""
+
         model = Sector
         fields = ['event']

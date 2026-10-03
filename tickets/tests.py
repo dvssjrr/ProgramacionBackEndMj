@@ -1,3 +1,5 @@
+"""Pruebas de compra, permisos, filtros y páginas de Tickets."""
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
@@ -15,6 +17,7 @@ class TicketPurchaseTests(TestCase):
     """Prueba pago, emisión, rechazo por falta de stock y cancelación."""
 
     def setUp(self):
+        """Crea un organizador, un comprador y stock inicial para cada prueba."""
         user_model = get_user_model()
         self.organizer = user_model.objects.create_user(username='organizer', password='secret')
         self.customer = user_model.objects.create_user(username='customer', password='secret')
@@ -28,6 +31,7 @@ class TicketPurchaseTests(TestCase):
         )
 
     def test_payment_and_cancellation_restore_stock_once(self):
+        """Comprueba el cobro, la emisión y la reposición única de stock."""
         cart = Cart.objects.create(user=self.customer)
         CartItem.objects.create(cart=cart, sector=self.sector, quantity=2)
         order = pay_cart(self.customer)
@@ -55,6 +59,7 @@ class TicketPurchaseTests(TestCase):
         self.assertEqual(self.sector.available_tickets, 3)
 
     def test_insufficient_stock_does_not_create_order_or_change_cart(self):
+        """Rechaza compras sin stock y conserva intactos el carro y el inventario."""
         cart = Cart.objects.create(user=self.customer)
         self.assertEqual(cart.status, Cart.Status.ACTIVE)
         CartItem.objects.create(cart=cart, sector=self.sector, quantity=4)
@@ -70,6 +75,7 @@ class TicketsAPITests(TestCase):
     """Verifica permisos públicos/protegidos y rol presente en JWT."""
 
     def setUp(self):
+        """Prepara usuarios de organización y compra para probar la API."""
         user_model = get_user_model()
         self.organizer = user_model.objects.create_user(username='organizer', password='secret123')
         self.viewer = user_model.objects.create_user(username='viewer', password='secret123')
@@ -78,6 +84,7 @@ class TicketsAPITests(TestCase):
         self.client = APIClient()
 
     def test_home_page_has_the_ticket_storefront_and_simple_navigation(self):
+        """Verifica la portada y sus opciones principales de compra."""
         response = self.client.get('/')
 
         self.assertEqual(response.status_code, 200)
@@ -89,6 +96,7 @@ class TicketsAPITests(TestCase):
         self.assertNotContains(response, 'href="/organizadores/"')
 
     def test_master_and_organizer_roles_are_distinct_from_customer(self):
+        """Confirma que maestro, organizador y comprador tienen roles distintos."""
         user_model = get_user_model()
         master = user_model.objects.create_user(username='damian', password='damian123', is_staff=True, is_superuser=True)
         organizer_group, _ = Group.objects.get_or_create(name='Organizador')
@@ -100,6 +108,7 @@ class TicketsAPITests(TestCase):
         self.assertFalse(self.viewer.groups.filter(name='Organizador').exists())
 
     def test_organizer_panel_has_login_and_unknown_admin_route_returns_home(self):
+        """Comprueba el acceso al panel y el destino de rutas desconocidas."""
         panel = self.client.get('/organizadores/')
 
         self.assertEqual(panel.status_code, 200)
@@ -109,16 +118,19 @@ class TicketsAPITests(TestCase):
         self.assertRedirects(self.client.get('/admin/'), '/', fetch_redirect_response=False)
 
     def test_not_found_page_redirects_to_home(self):
+        """Redirige a la portada cuando se solicita una ruta inexistente."""
         response = self.client.get('/ruta-inexistente/')
 
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, '/', fetch_redirect_response=False)
 
     def test_catalog_is_public_but_cart_requires_authentication(self):
+        """Permite leer eventos sin sesión y protege el carro con autenticación."""
         self.assertEqual(self.client.get('/api/eventos/').status_code, 200)
         self.assertEqual(self.client.get('/api/carro-tickets/').status_code, 401)
 
     def test_unpublished_events_are_hidden_from_catalog_but_kept_in_organizer_management(self):
+        """Oculta eventos retirados al público y conserva su gestión y seguridad."""
         venue = Venue.objects.create(
             name='Recinto oculto', address='Calle 1', capacity=50, organizer=self.organizer,
         )
@@ -143,6 +155,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual(managed_events.data[0]['id'], hidden_event.id)
 
     def test_demo_account_command_activates_accounts_and_sets_login_passwords(self):
+        """Verifica que el comando active y configure las tres cuentas demo."""
         call_command('seed_demo_users')
         user_model = get_user_model()
         for username, password in (
@@ -155,6 +168,7 @@ class TicketsAPITests(TestCase):
             self.assertTrue(account.check_password(password))
 
     def test_master_can_manage_other_organizers_events_venues_and_sales(self):
+        """Permite al maestro gestionar recursos y ventas de otros organizadores."""
         venue = Venue.objects.create(
             name='Recinto de organizador', address='Calle 2', capacity=80, organizer=self.organizer,
         )
@@ -178,6 +192,7 @@ class TicketsAPITests(TestCase):
         self.assertTrue(published.data['is_published'])
 
     def test_jwt_contains_the_user_role(self):
+        """Incluye el rol del organizador en los tokens access y refresh."""
         response = self.client.post(
             '/api/token/',
             {'username': 'organizer', 'password': 'secret123'},
@@ -197,6 +212,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual(AccessToken(refresh_response.data['access'])['role'], 'organizador')
 
     def test_public_registration_creates_only_a_spectator_and_returns_jwts(self):
+        """Registra espectadores sin permitir que el cliente elija su propio rol."""
         response = self.client.post(
             '/api/registro/',
             {
@@ -217,6 +233,7 @@ class TicketsAPITests(TestCase):
         self.assertTrue(registered.check_password('S3cure-Ticket-Pass-2026!'))
 
     def test_readding_sector_increases_cart_quantity_without_decreasing_stock(self):
+        """Acumula líneas repetidas y mantiene el carro al cambiar de dispositivo."""
         venue = Venue.objects.create(
             name='Sala Norte', address='Calle 1', capacity=50, organizer=self.organizer,
         )
@@ -254,6 +271,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual(cart_response.data[0]['quantity'], 2)
 
     def test_only_organizer_manages_sectors_and_changes_order_state(self):
+        """Restringe la gestión de localidades y estados al organizador."""
         venue = Venue.objects.create(
             name='Foro Rojo', address='Calle Sur 25', capacity=60, organizer=self.organizer,
         )
@@ -314,6 +332,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual(sector.available_tickets, 3)
 
     def test_organizer_management_endpoint_returns_only_owned_events(self):
+        """Limita al organizador a consultar sus propios eventos."""
         own_venue = Venue.objects.create(
             name='Recinto Propio', address='Calle 1', capacity=20, organizer=self.organizer,
         )
@@ -337,6 +356,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual([event['name'] for event in response.data], ['Evento Propio'])
 
     def test_organizer_can_create_edit_and_delete_own_event(self):
+        """Permite gestionar eventos propios y protege los vinculados a compras."""
         own_venue = Venue.objects.create(
             name='Sala CRUD', address='Calle CRUD 1', capacity=100, organizer=self.organizer,
         )
@@ -381,6 +401,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual(self.client.delete(f'/api/eventos/{event_id}/').status_code, 204)
 
     def test_organizer_cannot_create_event_with_past_start_time(self):
+        """Rechaza eventos pasados al crearlos mediante la API."""
         venue = Venue.objects.create(
             name='Recinto futuro', address='Calle 3', capacity=100, organizer=self.organizer,
         )
@@ -401,6 +422,7 @@ class TicketsAPITests(TestCase):
         self.assertIn('starts_at', response.data)
 
     def test_sector_total_edit_preserves_sold_inventory_and_blocks_unsafe_delete(self):
+        """Conserva entradas vendidas al editar stock y protege líneas en uso."""
         venue = Venue.objects.create(
             name='Arena Edición', address='Calle Stock', capacity=50, organizer=self.organizer,
         )
@@ -429,6 +451,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual(deletion.status_code, 409)
 
     def test_sector_filters_apply_event_and_price_range(self):
+        """Filtra localidades por evento y rango de precios."""
         venue = Venue.objects.create(
             name='Teatro Filtro', address='Calle Filtro 1', capacity=100, organizer=self.organizer,
         )
@@ -451,6 +474,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual([item['id'] for item in response.data], [match.pk])
 
     def test_demo_event_command_is_repeatable_without_resetting_stock(self):
+        """Comprueba que cargar eventos demo no duplica ni repone inventario."""
         call_command('seed_demo_events', verbosity=0)
         initial_event_count = Event.objects.count()
         initial_sector_count = Sector.objects.count()
@@ -466,6 +490,7 @@ class TicketsAPITests(TestCase):
         self.assertEqual(sector.available_tickets, sector.total_tickets - 1)
 
     def test_checkout_pays_cart_and_issues_tickets(self):
+        """Confirma el pago, el descuento de stock y la emisión de entradas."""
         venue = Venue.objects.create(
             name='Arena Central', address='Avenida 10', capacity=80, organizer=self.organizer,
         )

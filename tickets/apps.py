@@ -1,3 +1,5 @@
+"""Configuración de la aplicación de venta de entradas."""
+
 from django.apps import AppConfig
 
 

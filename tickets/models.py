@@ -46,6 +46,8 @@ class Sector(models.Model):
     available_tickets = models.PositiveIntegerField(validators=[MinValueValidator(0)])
 
     class Meta:
+        """Evita repetir el nombre de localidad dentro del mismo evento."""
+
         constraints = [models.UniqueConstraint(fields=['event', 'name'], name='unique_sector_per_event')]
         ordering = ['event__starts_at', 'name']
 
@@ -58,6 +60,8 @@ class Cart(models.Model):
     """Carro persistente único por usuario, independiente de la sesión."""
 
     class Status(models.TextChoices):
+        """Estados disponibles para el carro persistente."""
+
         ACTIVE = 'ACTIVO', 'Activo'
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ticket_cart')
@@ -74,6 +78,8 @@ class CartItem(models.Model):
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 
     class Meta:
+        """Permite una sola línea por localidad en cada carro."""
+
         constraints = [models.UniqueConstraint(fields=['cart', 'sector'], name='unique_sector_per_cart')]
 
 
@@ -81,6 +87,8 @@ class Order(models.Model):
     """Historial de compra con estados permitidos explícitamente."""
 
     class Status(models.TextChoices):
+        """Estados permitidos durante el ciclo de una compra."""
+
         PENDING = 'PENDIENTE', 'Pendiente'
         PAID = 'PAGADO', 'Pagado'
         DELIVERED = 'ENTREGADO', 'Entregado'
@@ -113,6 +121,8 @@ class Ticket(models.Model):
     """Entrada individual identificada mediante UUID único."""
 
     class Status(models.TextChoices):
+        """Estados posibles de una entrada emitida."""
+
         VALID = 'VALIDA', 'Válida'
         USED = 'UTILIZADA', 'Utilizada'
         CANCELLED = 'CANCELADA', 'Cancelada'

@@ -1,3 +1,5 @@
+"""Operaciones transaccionales de compra, inventario y estados de órdenes."""
+
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
