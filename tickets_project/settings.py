@@ -17,7 +17,7 @@ SECRET_KEY = 'django-insecure-gpug60+5#kh3+pz($^dc0()c3)!0s$rhvbgzx)+-g(7c)8tx#m
 # DEBUG solo se activa explícitamente desde .env.
 DEBUG = os.getenv('DEBUG', 'false').strip().lower() in {'1', 'true', 'yes'}
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
+ALLOWED_HOSTS = ['*']
 
 
 # Aplicaciones instaladas: API de tickets, DRF y componentes de Django.
@@ -25,6 +25,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
 INSTALLED_APPS = [
     'tickets.apps.TicketsConfig',
     'rest_framework',
+    'tasks',
     'rest_framework_simplejwt',
     'django_filters',
     'drf_spectacular',
@@ -69,16 +70,25 @@ WSGI_APPLICATION = 'tickets_project.wsgi.application'
 # PostgreSQL almacena los eventos, carritos y órdenes del sistema.
 # Las credenciales se inyectan mediante variables de entorno.
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'ticketing'),
-        'USER': os.getenv('POSTGRES_USER', 'postgres'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+if os.getenv('POSTGRES_HOST'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'ticketing'),
+            'USER': os.getenv('POSTGRES_USER', 'postgres'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+            'HOST': os.getenv('POSTGRES_HOST'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        }
     }
-}
+else:
+    # Sin Postgres configurado (p. ej. el servidor EC2) se usa SQLite.
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Conserva las migraciones ya aplicadas con el label original de la app.
 MIGRATION_MODULES = {'ticketing': 'tickets.migrations'}

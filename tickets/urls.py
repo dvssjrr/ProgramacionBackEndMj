@@ -4,7 +4,10 @@ from rest_framework.routers import DefaultRouter
 
 from .views import CartItemViewSet, EventViewSet, MyTicketViewSet, PurchaseViewSet, SectorViewSet, VenueViewSet
 
+from tasks.views import TaskViewSet
+
 router = DefaultRouter()
+router.register('tasks', TaskViewSet)
 router.register('eventos', EventViewSet, basename='event')
 router.register('recintos', VenueViewSet, basename='venue')
 router.register('sectores', SectorViewSet, basename='sector')
