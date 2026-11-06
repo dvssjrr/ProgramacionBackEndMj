@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 690" role="img">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#621d24"/><stop offset="1" stop-color="#171719"/></linearGradient><linearGradient id="body" x2="1" y2="1"><stop stop-color="#d7605f"/><stop offset="1" stop-color="#752f38"/></linearGradient></defs>
+<path d="M160 35h420v620H160z" fill="url(#bg)" opacity=".7"/><path d="M160 35h420v620H160z" fill="none" stroke="#ba494e" opacity=".4"/>
+<path d="M200 84h340M200 112h260M200 596h340" stroke="#e45d62" opacity=".2" stroke-width="2"/>
+<circle cx="362" cy="169" r="52" fill="url(#body)"/><path d="M315 158c5-56 83-70 98-3-31-12-47-21-66-36-3 20-14 32-32 39z" fill="#262428"/>
+<path d="M315 226q44-30 92 0l38 123-58 45-108-33z" fill="#202024" stroke="#bd5154" stroke-width="4"/><path d="M320 229l-34 91-52 45-21-25 46-55 22-67zM404 228l44 78 47 15-8 32-71-17-44-57z" fill="url(#body)"/>
+<path d="M278 354l109 22 17 111-47 4-23-76-37 84-48-15z" fill="#25252b"/><path d="M251 482l46 14-13 104-31 16-23-11zM357 487l47-1 35 108-22 19-30-10z" fill="url(#body)"/>
+<path d="M249 596l36 3 2 24h-70q-4-10 15-17zM414 594l29-4 19 24q4 11-2 12h-62q-4-12 16-32z" fill="#111"/>
+<g fill="#111"><rect x="73" y="338" width="151" height="12" rx="5"/><rect x="64" y="308" width="23" height="72" rx="5"/><rect x="92" y="317" width="19" height="55" rx="4"/><rect x="209" y="310" width="23" height="68" rx="5"/><rect x="182" y="318" width="19" height="53" rx="4"/></g>
+<path d="M80 636h520" stroke="#e3232e" stroke-width="3"/><text x="192" y="670" fill="#bcb2b3" font-family="Arial" font-size="12" letter-spacing="3">TRAIN HARD / MOVE WELL</text>
+</svg>

@@ -1,0 +1,3 @@
+{% extends "fitlife/base.html" %}
+{% block title %}{{ codigo }} | FitLife{% endblock %}
+{% block content %}<main class="wrap section narrow"><section class="surface"><span class="eyebrow red">FITLIFE / {{ codigo }}</span><h1>ALGO NO SALIÓ <em>COMO ESPERÁBAMOS.</em></h1><p>{{ mensaje }}</p><a class="btn btn-red" href="{% url 'home' %}">Volver al inicio →</a></section></main>{% endblock %}

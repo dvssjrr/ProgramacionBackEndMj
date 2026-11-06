@@ -1,0 +1,15 @@
+{% extends "fitlife/base.html" %}
+{% block title %}Usuarios | FitLife{% endblock %}
+{% block content %}
+<main class="wrap section">
+  <a class="inline-link" href="{% url 'panel' %}#gestion">← Volver a gestión</a>
+  <div class="section-head"><div><span class="eyebrow red">GESTIÓN / CUENTAS</span><h1>USUARIOS<em>.</em></h1></div><p>Crea cuentas, asigna roles y controla el acceso al sistema.</p></div>
+  <div class="member-grid"><section class="surface"><h2>{% if usuario_editado %}Editar {{ usuario_editado.username }}{% else %}Crear usuario{% endif %}</h2>
+    {% include "fitlife/_form.html" %}{% if usuario_editado %}<p><a class="inline-link" href="{% url 'cambiar_clave' usuario_editado.pk %}">Cambiar contraseña ↗</a></p><a class="inline-link" href="{% url 'usuarios' %}">Cancelar edición</a>{% endif %}
+  </section><section><h2>Cuentas registradas</h2>
+    {% for cuenta in items %}<article class="surface record"><h3>{{ cuenta.get_full_name|default:cuenta.username }}</h3><p>@{{ cuenta.username }} · {% if cuenta.is_superuser %}Administrador principal{% else %}{{ cuenta.get_role_display }}{% endif %} · {% if cuenta.is_active %}Activa{% else %}Inactiva{% endif %}</p>
+      {% if not cuenta.is_superuser or cuenta.pk == user.pk %}<a class="inline-link" href="{% url 'editar_usuario' cuenta.pk %}">Editar cuenta ↗</a>{% else %}<span class="muted">Cuenta protegida</span>{% endif %}
+    </article>{% empty %}<div class="empty">Todavía no hay cuentas.</div>{% endfor %}{% include "fitlife/_pagination.html" %}
+  </section></div>
+</main>
+{% endblock %}

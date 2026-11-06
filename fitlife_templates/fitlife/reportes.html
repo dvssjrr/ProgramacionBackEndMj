@@ -1,0 +1,4 @@
+{% extends "fitlife/base.html" %}
+{% block title %}Reporte de accesos | FitLife{% endblock %}
+{% block content %}<main class="wrap section"><a class="inline-link" href="{% url 'panel' %}#gestion">← Volver a gestión</a><div class="section-head"><div><span class="eyebrow red">GESTIÓN / REPORTES</span><h1>ACCESOS<em>.</em></h1></div><p>Entradas y salidas registradas por recepción.</p></div>
+{% for registro in items %}<article class="surface record"><h3>{{ registro.socio.username }} · {{ registro.get_accion_display }}</h3><p>{{ registro.fecha|date:"d/m/Y H:i" }} · Operador: {{ registro.operador.username }} · {% if registro.permitido %}Permitido{% else %}Denegado: {{ registro.motivo }}{% endif %}</p></article>{% empty %}<div class="empty">No hay accesos registrados.</div>{% endfor %}{% include "fitlife/_pagination.html" %}</main>{% endblock %}

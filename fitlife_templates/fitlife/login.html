@@ -1,0 +1,12 @@
+{% extends "fitlife/base.html" %}
+{% block title %}Iniciar sesión | FitLife{% endblock %}
+{% block content %}
+<main class="auth-wrap"><div class="auth-intro"><span class="eyebrow red">BIENVENIDO DE NUEVO</span><h1>TU RUTINA<br><em>TE ESPERA.</em></h1><p>Ingresa a tu cuenta para gestionar tus clases y mantenerte en movimiento.</p></div>
+<section class="auth-card"><span class="eyebrow red">TU CUENTA</span><h2>Iniciar sesión</h2><p class="muted">Introduce tus datos para continuar.</p>
+{% if form.errors %}<div class="alert error">Usuario o contraseña incorrectos. Inténtalo nuevamente.</div>{% endif %}
+<form method="post" class="form">{% csrf_token %}
+<label for="id_username">Usuario</label><input id="id_username" name="username" autocomplete="username" required autofocus>
+<label for="id_password">Contraseña</label><input id="id_password" name="password" type="password" autocomplete="current-password" required>
+<input type="hidden" name="next" value="{{ next }}"><button class="btn btn-red" type="submit">Ingresar →</button></form>
+<p class="muted">¿Aún no tienes cuenta? <a class="inline-link" href="{% url 'registro' %}">Regístrate</a></p></section></main>
+{% endblock %}

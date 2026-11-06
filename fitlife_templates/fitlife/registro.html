@@ -1,0 +1,10 @@
+{% extends "fitlife/base.html" %}
+{% block title %}Crear cuenta | FitLife{% endblock %}
+{% block content %}
+<main class="auth-wrap"><div class="auth-intro"><span class="eyebrow red">FORMA PARTE</span><h1>EL PRIMER PASO<br><em>ES TUYO.</em></h1><p>Crea tu cuenta de socio. El equipo del gimnasio te ayudará a activar tu membresía.</p></div>
+<section class="auth-card"><span class="eyebrow red">COMENZAR</span><h2>Crear cuenta</h2>
+<form method="post" class="form">{% csrf_token %}
+{% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
+{% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small class="help">{{ field.help_text|safe }}</small>{% endif %}{% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}{% endfor %}
+<button type="submit" class="btn btn-red">Crear mi cuenta →</button></form><p class="muted">¿Ya tienes cuenta? <a class="inline-link" href="{% url 'login' %}">Inicia sesión</a></p></section></main>
+{% endblock %}

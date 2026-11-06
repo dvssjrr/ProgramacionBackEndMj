@@ -1,0 +1,17 @@
+{% extends "fitlife/base.html" %}
+{% block title %}Gestión de clases | FitLife{% endblock %}
+{% block content %}
+<main class="wrap section">
+  <a class="inline-link" href="{% url 'panel' %}">← Volver a mi panel</a>
+  <div class="section-head"><div><span class="eyebrow red">GESTIÓN / AGENDA</span><h1>CLASES Y <em>HORARIOS.</em></h1></div><p>Crea sesiones y asigna instructores y cupos.</p></div>
+  <div class="member-grid"><section class="surface"><h2>{% if editando %}Editar clase{% else %}Nueva clase{% endif %}</h2>
+    <form method="post" class="form">{% csrf_token %}{{ form.non_field_errors }}
+      {% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}{% endfor %}
+      <button class="btn btn-red">Guardar clase →</button>
+      {% if editando %}<a class="inline-link" href="{% url 'gestionar_clases' %}">Cancelar edición</a>{% endif %}
+    </form>
+  </section><section><h2>Clases programadas</h2>
+    {% for clase in clases %}<article class="surface class-list"><div><h3>{{ clase.nombre }}</h3><p>{{ clase.inicio|date:"d/m/Y H:i" }} · {{ clase.ocupados }}/{{ clase.cupo_maximo }} plazas</p><p class="muted">{% if clase.instructor %}{{ clase.instructor.get_full_name|default:clase.instructor.username }}{% else %}Sin instructor asignado{% endif %} · {% if clase.activa %}Activa{% else %}Inactiva{% endif %}</p><div class="record-actions"><a class="inline-link" href="{% url 'editar_clase' clase.pk %}">Editar ↗</a><form method="post" action="{% url 'eliminar_clase' clase.pk %}" onsubmit="return confirm('¿Eliminar esta clase?')">{% csrf_token %}<button class="text-button delete-button">Eliminar</button></form></div></div></article>{% empty %}<div class="empty">Todavía no hay clases.</div>{% endfor %}
+  </section></div>
+</main>
+{% endblock %}

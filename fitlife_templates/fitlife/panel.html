@@ -1,0 +1,51 @@
+{% extends "fitlife/base.html" %}
+{% load static %}
+{% block title %}Mi panel | FitLife{% endblock %}
+{% block content %}
+<div class="dashboard wrap">
+  <aside class="sidebar"><span class="eyebrow red">ESPACIO FITLIFE</span><strong>{{ user.get_full_name|default:user.username }}</strong>
+    <span class="muted">{% if user.is_superuser %}Administrador{% else %}{{ user.get_role_display }}{% endif %}</span>
+    <nav aria-label="Navegación del panel">
+      <a href="#resumen">◫ &nbsp; Resumen</a>
+      {% if es_equipo %}<a href="#gestion">▦ &nbsp; Gestión</a><a href="#control">◎ &nbsp; Accesos y aforo</a>
+      {% elif es_instructor %}<a href="#mis-clases">▦ &nbsp; Mis clases</a>
+      {% else %}<a href="#mi-qr">◎ &nbsp; Mi acceso</a><a href="#clases">▦ &nbsp; Clases</a><a href="#historial">◷ &nbsp; Historial</a>{% endif %}
+    </nav>
+  </aside>
+  <main class="panel" id="resumen">
+    <div class="panel-heading"><div><span class="eyebrow red">TU ESPACIO / {% if es_equipo %}GESTIÓN{% elif es_instructor %}INSTRUCTOR{% else %}SOCIO{% endif %}</span><h1>HOLA, {{ user.first_name|default:user.username|upper }}<span class="red">.</span></h1><p class="muted">{% if es_equipo %}Todo lo que necesitas para gestionar tu gimnasio.{% elif es_instructor %}Tus clases y alumnos para hoy, en un solo lugar.{% else %}Tu entrenamiento, tus clases y tu progreso.{% endif %}</p></div><span class="status-pill"><span class="dot"></span> EN LÍNEA</span></div>
+    <div id="mensaje" role="status" aria-live="polite"></div>
+    {% if es_equipo %}
+      <div class="metric-grid"><div class="metric"><span>PERSONAS DENTRO</span><strong id="aforo-dentro">{{ dentro }}</strong><small id="aforo-detalle">{% if capacidad %}Capacidad {{ capacidad.capacidad }}{% else %}Configura la capacidad{% endif %}</small></div><div class="metric"><span>SOCIOS ACTIVOS</span><strong>{{ socios_count }}</strong><small>Cuentas habilitadas</small></div><div class="metric"><span>PRÓXIMAS CLASES</span><strong>{{ clases_count }}</strong><small>Sesiones programadas</small></div></div>
+      <section id="gestion" class="panel-section"><div class="subheading"><div><span class="eyebrow red">ACCESOS RÁPIDOS</span><h2>Gestiona tu gimnasio</h2></div></div>
+        <div class="quick-grid">
+          {% if es_admin %}<a class="quick-card" href="{% url 'usuarios' %}"><span class="quick-icon">♙</span><h3>Usuarios</h3><p>Crea cuentas y gestiona roles.</p><span>Administrar ↗</span></a><a class="quick-card" href="{% url 'configuracion' %}"><span class="quick-icon">⚙</span><h3>Configuración</h3><p>Ajusta la capacidad del gimnasio.</p><span>Configurar ↗</span></a>{% endif %}
+          <a class="quick-card" href="{% url 'gestionar' 'planes' %}"><span class="quick-icon">◈</span><h3>Planes</h3><p>Precios, duración y beneficios.</p><span>Administrar ↗</span></a>
+          <a class="quick-card" href="{% url 'gestionar' 'membresias' %}"><span class="quick-icon">◇</span><h3>Membresías</h3><p>Planes, socios y vigencias.</p><span>Administrar ↗</span></a>
+          <a class="quick-card" href="{% url 'gestionar' 'pagos' %}"><span class="quick-icon">$</span><h3>Pagos</h3><p>Revisa y registra pagos.</p><span>Administrar ↗</span></a>
+          <a class="quick-card" href="{% url 'gestionar_clases' %}"><span class="quick-icon">▦</span><h3>Clases y horarios</h3><p>Gestiona cupos e instructores.</p><span>Abrir gestión ↗</span></a>
+          <a class="quick-card" href="#control"><span class="quick-icon">◎</span><h3>Control de acceso</h3><p>Escanea códigos de socios.</p><span>Ir al control ↗</span></a>
+          <a class="quick-card" href="{% url 'reportes' %}"><span class="quick-icon">◷</span><h3>Reportes de acceso</h3><p>Consulta el historial del gimnasio.</p><span>Ver registros ↗</span></a>
+          <div class="quick-card"><span class="quick-icon">⌖</span><h3>Sedes</h3><p>La información de ubicaciones está pendiente de configuración. El aforo es global.</p></div>
+        </div>
+      </section>
+      <section id="control" class="panel-section surface"><span class="eyebrow red">RECEPCIÓN</span><h2>Control de acceso</h2><p class="muted">Pega el código que aparece en el perfil del socio. El aforo se actualiza cada 10 segundos.</p>
+        <form id="escanear" class="form">{% csrf_token %}<label for="codigo">Código del socio</label><textarea id="codigo" rows="3" required></textarea><label for="accion">Acción</label><select id="accion"><option value="entrada">Entrada</option><option value="salida">Salida</option></select><button class="btn btn-red">Validar acceso →</button></form>
+      </section>
+    {% elif es_instructor %}
+      <section class="panel-section" id="mis-clases"><div class="subheading"><div><span class="eyebrow red">TU AGENDA</span><h2>Clases de hoy</h2></div></div>
+        {% for clase in clases_instructor %}<article class="surface class-list"><div><span class="eyebrow red">{{ clase.inicio|date:"H:i" }}</span><h3>{{ clase.nombre }}</h3><p class="muted">{{ clase.reservas.count }} / {{ clase.cupo_maximo }} reservas confirmadas</p></div><div><strong>Lista de alumnos</strong><ul>{% for reserva in clase.reservas.all %}<li>{{ reserva.socio.get_full_name|default:reserva.socio.username }}</li>{% empty %}<li>Sin alumnos inscritos.</li>{% endfor %}</ul></div></article>{% empty %}<div class="empty">No tienes clases asignadas para hoy.</div>{% endfor %}
+      </section>
+    {% else %}
+      <div class="member-grid" id="mi-qr"><div class="surface member-card"><span class="eyebrow red">MI MEMBRESÍA</span><h2>{% if membresia %}{{ membresia.plan.nombre }}{% else %}Aún no tienes un plan activo{% endif %}</h2><p>{% if membresia %}Vigente hasta el {{ membresia.fin|date:"d/m/Y" }}.{% else %}Consulta con recepción para activar tu membresía y reservar clases.{% endif %}</p><span class="status-pill">{% if membresia %}ACTIVA{% else %}SIN MEMBRESÍA{% endif %}</span></div>
+        <div class="surface qr-card"><div><span class="eyebrow red">MI ACCESO</span><h2>Tu código QR</h2><p class="muted">Muéstralo en recepción. Se actualiza cada minuto.</p><label for="token">Código para simulación</label><textarea id="token" readonly rows="2"></textarea></div><img id="qr" alt="Código QR personal de acceso" width="160" height="160"></div>
+      </div>
+      <section class="panel-section" id="mis-reservas"><span class="eyebrow red">TU AGENDA</span><h2>Mis inscripciones</h2><div class="surface"><h3>Reservas confirmadas</h3><ul>{% for reserva in reservas %}<li>{{ reserva.clase.nombre }} · {{ reserva.clase.inicio|date:"d/m/Y H:i" }}</li>{% empty %}<li>Aún no tienes reservas próximas.</li>{% endfor %}</ul><h3>Lista de espera</h3><ul>{% for espera in esperas %}<li>{{ espera.clase.nombre }} · {{ espera.clase.inicio|date:"d/m/Y H:i" }}</li>{% empty %}<li>No estás en lista de espera.</li>{% endfor %}</ul></div></section>
+      <section class="panel-section" id="clases"><span class="eyebrow red">ENCUENTRA TU RITMO</span><h2>Clases disponibles</h2><div id="clases-lista" class="quick-grid"><div class="empty">Cargando clases…</div></div></section>
+      <section class="panel-section" id="historial"><span class="eyebrow red">TU ACTIVIDAD</span><h2>Historial de accesos</h2><div class="surface"><ul>{% for acceso in accesos %}<li>{{ acceso.get_accion_display }} · {{ acceso.fecha|date:"d/m/Y H:i" }}</li>{% empty %}<li>Todavía no hay accesos registrados.</li>{% endfor %}</ul></div></section>
+      <form hidden>{% csrf_token %}</form>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'fitlife/js/panel.js' %}" defer></script>{% endblock %}

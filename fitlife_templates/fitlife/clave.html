@@ -1,0 +1,3 @@
+{% extends "fitlife/base.html" %}
+{% block title %}Cambiar contraseña | FitLife{% endblock %}
+{% block content %}<main class="wrap section narrow"><a class="inline-link" href="{% url 'editar_usuario' usuario_editado.pk %}">← Volver a usuario</a><section class="surface"><span class="eyebrow red">SEGURIDAD</span><h2>Contraseña de {{ usuario_editado.username }}</h2>{% include "fitlife/_form.html" %}</section></main>{% endblock %}

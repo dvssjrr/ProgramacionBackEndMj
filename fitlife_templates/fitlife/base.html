@@ -1,0 +1,34 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111114">
+  <title>{% block title %}FitLife | Tu mejor versión{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'fitlife/css/site.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap nav">
+    <a class="brand" href="{% url 'home' %}" aria-label="FitLife, ir al inicio"><img src="{% static 'fitlife/img/logo.svg' %}" alt=""><span>FIT<span>LIFE</span></span></a>
+    <nav class="nav-links" aria-label="Navegación principal">
+      <a href="{% url 'home' %}#planes">Planes</a><a href="{% url 'home' %}#clases">Clases</a><a href="{% url 'home' %}#sedes">Sedes</a>
+    </nav>
+    <div class="nav-actions">
+      {% if user.is_authenticated %}
+        <a class="btn btn-small btn-outline" href="{% url 'panel' %}">Mi panel</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-button" type="submit">Salir</button></form>
+      {% else %}
+        <a class="text-button" href="{% url 'login' %}">Iniciar sesión</a><a class="btn btn-small btn-red" href="{% url 'registro' %}">Registrarse</a>
+      {% endif %}
+    </div>
+  </div>
+</header>
+{% if messages %}<div class="wrap">{% for message in messages %}<div class="alert {% if message.tags == 'error' %}error{% else %}success{% endif %}" role="status">{{ message }}</div>{% endfor %}</div>{% endif %}
+{% block content %}{% endblock %}
+<footer class="footer"><div class="wrap footer-inner"><span class="brand-text">FIT<span>LIFE</span></span><span>Entrena a tu manera. Avanza a tu ritmo.</span><a href="{% url 'home' %}#sedes">Nuestras sedes</a></div></footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

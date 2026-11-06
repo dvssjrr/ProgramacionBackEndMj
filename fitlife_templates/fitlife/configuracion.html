@@ -1,0 +1,3 @@
+{% extends "fitlife/base.html" %}
+{% block title %}Configuración | FitLife{% endblock %}
+{% block content %}<main class="wrap section narrow"><a class="inline-link" href="{% url 'panel' %}#gestion">← Volver a gestión</a><section class="surface"><span class="eyebrow red">GIMNASIO</span><h2>Capacidad del recinto</h2><p class="muted">Se utiliza para calcular el porcentaje de aforo. No bloquea nuevas entradas.</p>{% include "fitlife/_form.html" %}</section></main>{% endblock %}
