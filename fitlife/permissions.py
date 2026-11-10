@@ -1,3 +1,5 @@
+"""Comprobaciones compartidas de roles para las páginas y la API."""
+
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from .models import User
@@ -18,4 +20,5 @@ class Equipo(BasePermission):
 
 class LecturaOEquipo(BasePermission):
     def has_permission(self, request, view):
+        # Los metodos seguros permiten consultar; los cambios requieren equipo.
         return request.user.is_authenticated and (request.method in SAFE_METHODS or es_equipo(request.user))

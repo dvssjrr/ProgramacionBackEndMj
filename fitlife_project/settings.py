@@ -6,6 +6,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# En produccion la clave se obtiene del entorno y DEBUG queda desactivado.
 DEBUG = os.environ.get("FITLIFE_DEBUG", "false").lower() in {"1", "true", "yes"}
 SECRET_KEY = os.environ.get("FITLIFE_SECRET_KEY", "")
 if not SECRET_KEY:
@@ -47,6 +48,7 @@ TEMPLATES = [{
 WSGI_APPLICATION = "fitlife_project.wsgi.application"
 ASGI_APPLICATION = "fitlife_project.asgi.application"
 
+# La contrasena no se guarda en el codigo; se configura en el servidor.
 DATABASES = {"default": {
     "ENGINE": "django.db.backends.postgresql",
     "NAME": os.environ.get("FITLIFE_DB_NAME", "fitlife_db"),
@@ -63,6 +65,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 REST_FRAMEWORK = {
+    # La API usa la sesion de Django y exige autenticacion por defecto.
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -79,6 +82,7 @@ CSRF_FAILURE_VIEW = "fitlife.pages.csrf_failure"
 LOGIN_REDIRECT_URL = "/panel/"
 LOGOUT_REDIRECT_URL = "/"
 SESSION_COOKIE_HTTPONLY = True
+# Activar solo cuando el proxy sirve HTTPS y establece X-Forwarded-Proto.
 SESSION_COOKIE_SECURE = os.environ.get("FITLIFE_HTTPS", "false").lower() == "true"
 CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 SECURE_SSL_REDIRECT = SESSION_COOKIE_SECURE

@@ -1,0 +1,14 @@
+:root {
+  --primary: #9f111b;
+  --secondary: #16191e;
+  --accent: #fff;
+  --header-bg: #16191e;
+  --header-color: #fff;
+  --link-fg: #9f111b;
+  --button-bg: #a9111c;
+  --default-button-bg: #a9111c;
+}
+
+#header {
+  border-bottom: 4px solid #e50914;
+}

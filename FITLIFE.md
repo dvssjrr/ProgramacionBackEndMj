@@ -5,6 +5,21 @@ DRF, PostgreSQL, sesiones y CSRF.
 
 ## Configuración
 
+### Mapa del código
+
+`fitlife/models.py` define las entidades y restricciones de la base de datos.
+`forms.py` valida los formularios HTML, `serializers.py` valida la API y
+`permissions.py` centraliza los roles. `pages.py` y `page_urls.py` sirven las
+páginas propias; `views.py` y `urls.py` exponen la API REST.
+`services.py` reúne las reglas de reservas y acceso; `shop.py` implementa
+las transacciones de compra y `shop_views.py` sus páginas. `admin.py` configura
+el administrador de evaluación de solo lectura. Las plantillas están en
+`fitlife_templates/fitlife` y `static/fitlife/js/panel.js` consulta la API.
+
+Las operaciones que cambian reservas, presencia o pedidos usan transacciones
+y bloqueos de filas en PostgreSQL. Mantén estas operaciones en los servicios:
+modificar directamente las tablas puede saltarse las reglas de negocio.
+
 La conexión predeterminada usa el motor PostgreSQL, base `fitlife_db`, usuario
 `fitlife_user`, host `localhost` y puerto `5432`. Define
 `FITLIFE_DB_PASSWORD` con la contraseña suministrada para esa base. **No se
@@ -69,10 +84,19 @@ El simulador recibe el texto del QR: no captura imágenes desde
 la cámara ni interpreta imágenes; un lector físico tendría que decodificar el
 QR y enviar su texto a la API.
 
-La fotografía de gimnasio es referencial y no representa una sede de FitLife.
-Fuente: [Gym 01, Sergej Majboroda / Poly Haven](https://polyhaven.com/a/gym_01),
-publicada bajo [CC0](https://creativecommons.org/publicdomain/zero/1.0/);
-se redujo la resolución para el sitio.
+La fotografía de portada es referencial y no representa necesariamente una
+sede de FitLife; fue proporcionada por el usuario, que indicó tener autorización
+para usarla.
+
+### Administrador para evaluación
+
+La ruta `/evaluacion/` ofrece el administrador de Django con identidad FitLife
+para inspeccionar todos los modelos del caso. Solo permite entrar a
+superusuarios activos. Es de **solo lectura**: crear, editar y eliminar se hace
+en las páginas propias o la API, para conservar sus reglas y bloqueos
+transaccionales. Las reservas, la lista de espera y los accesos se gestionan
+mediante sus operaciones específicas, no editando directamente sus registros.
+La ruta no se incluye en la navegación habitual.
 
 ## Reglas y API
 
@@ -109,6 +133,34 @@ se redujo la resolución para el sitio.
 - Los pagos son registros administrativos, no una integración con pasarela.
   No se crean ni renuevan membresías automáticamente al registrar un pago.
 
+## Tienda y carrito
+
+En **Tienda**, los socios pueden añadir productos y un plan al carrito. El
+equipo crea productos, define sus precios y su inventario en **Productos**.
+No se han creado productos de ejemplo: pueden ser, por ejemplo, botellas,
+toallas o accesorios que el gimnasio venda efectivamente.
+
+El socio envía el carrito como un pedido **pendiente de pago**. Los precios,
+nombres y duración del plan quedan fijados en el pedido; el stock no se reserva.
+El pago y el retiro se realizan en recepción, no por Internet. Una vez recibido
+el dinero, recepción confirma el pedido desde **Pedidos**: se valida y descuenta
+el stock en una transacción, y se activa el plan desde ese día. Si el socio ya
+tiene una membresía activa, futura o congelada, o si falta stock, el pedido
+permanece pendiente y no se modifica el inventario ni se activa el plan.
+Los pedidos pendientes pueden cancelarse; los confirmados no pueden cancelarse
+desde la interfaz y deben tratarse manualmente con administración.
+La venta completa queda registrada en el pedido; el registro de pago de
+membresía contiene solo el precio del plan, no el importe de los productos.
+
+Para usar dos cuentas al mismo tiempo, abre FitLife en dos navegadores o
+perfiles distintos, o usa una ventana normal y otra privada. Las pestañas del
+mismo perfil comparten sesión; abrir dos pestañas normales no crea dos cuentas
+independientes.
+
+La portada usa la imagen `Chiswick-EG-7_1.webp` suministrada por el usuario,
+quien indicó que cuenta con autorización para utilizarla; la imagen se muestra
+como referencia y no como fotografía verificada de una sede de FitLife.
+
 ## Pruebas
 
 ```powershell
@@ -127,13 +179,38 @@ también el bloqueo real, configura las variables PostgreSQL anteriores y ejecut
 Django crea una **base de pruebas separada**; el usuario debe tener permiso
 `CREATEDB`. No se deben dirigir pruebas a una base de producción.
 
-## Acceso privado a una instancia EC2 mediante SSH
+## Acceso público HTTPS y mantenimiento
 
-Si todavía no existe un dominio con HTTPS, se puede mantener FitLife accesible
-solo mediante túnel SSH. En la instancia configurada, Gunicorn escucha en
+La instancia configurada atiende FitLife en `https://184.198.202.51/`.
+El puerto 80 redirige a HTTPS y permite el desafío de renovación del
+certificado. La ruta de evaluación es `https://184.198.202.51/evaluacion/`;
+requiere una cuenta de superusuario. Gunicorn y PostgreSQL permanecen privados.
+
+El certificado de Let's Encrypt para IP tiene una vida aproximada de seis días;
+Certbot dispone de un temporizador de renovación y un hook recarga Nginx.
+Consulta su estado en la instancia:
+
+```bash
+sudo systemctl list-timers --all | grep certbot
+sudo /snap/bin/certbot certificates
+sudo /snap/bin/certbot renew --dry-run --run-deploy-hooks
+sudo systemctl status fitlife nginx postgresql
+```
+
+Si EC2 cambia de IP pública, el certificado anterior no será válido para la
+nueva dirección. Será necesario actualizar el certificado, Nginx y las variables
+de host y CSRF; una Elastic IP o un dominio estable facilita la operación.
+Mantén la instancia encendida para servir la aplicación y renovar el certificado.
+No publiques credenciales ni los archivos de configuración privados.
+
+## Acceso privado alternativo mediante SSH
+
+En una instalación configurada **sin** `FITLIFE_HTTPS=true`, se puede mantener
+FitLife accesible solo mediante túnel SSH. En la instancia, Gunicorn escucha en
 `127.0.0.1:8001`, y Nginx sirve la aplicación y sus archivos estáticos en
 `127.0.0.1:8081`. Estos puertos no necesitan abrirse en el grupo de seguridad.
-El puerto 80 existente de Nginx no sirve la aplicación FitLife.
+Con `FITLIFE_HTTPS=true`, las cookies son seguras y este túnel HTTP no sirve
+para iniciar sesión; usa la dirección pública HTTPS configurada.
 
 En PowerShell, sustituye la ruta, usuario y dirección por los de tu instancia:
 
@@ -167,8 +244,8 @@ administradores, ejecuta en la instancia:
 sudo bash -c 'set -a; . /etc/fitlife.env; set +a; cd /srv/fitlife; exec runuser -u fitlife -- .venv/bin/python manage.py createsuperuser'
 ```
 
-No habilites el acceso público a la aplicación hasta configurar un dominio,
-HTTPS válido y las variables de seguridad descritas a continuación.
+No habilites el acceso público a la aplicación sin HTTPS válido y las variables
+de seguridad descritas a continuación.
 
 ## Despliegue Ubuntu 24.04, Gunicorn y Nginx
 

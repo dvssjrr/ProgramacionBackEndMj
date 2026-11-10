@@ -1,11 +1,13 @@
 const message = document.getElementById('mensaje');
 const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
 const csrf = tokenInput ? tokenInput.value : '';
+// Muestra errores y confirmaciones sin insertar HTML proporcionado por el usuario.
 function notify(text, error = false) {
   message.className = `alert ${error ? 'error' : 'success'}`;
   message.textContent = text;
 }
 async function api(url, options = {}) {
+  // La sesion y el token CSRF acompanian las peticiones de la interfaz.
   const response = await fetch(url, {
     credentials: 'same-origin', ...options,
     headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/json', ...(options.headers || {})},
@@ -21,6 +23,7 @@ async function refreshAforo() {
 }
 const scanner = document.getElementById('escanear');
 if (scanner) {
+  // Solo el panel del equipo incluye el formulario de control de acceso.
   scanner.addEventListener('submit', async event => {
     event.preventDefault();
     try {
@@ -37,6 +40,7 @@ if (scanner) {
 async function refreshQR() {
   const perfil = await api('/api/perfil/');
   document.getElementById('token').value = perfil.qr_token;
+  // La URL variable evita reutilizar una imagen QR caducada.
   document.getElementById('qr').src = `/api/perfil/qr/?t=${Date.now()}`;
 }
 async function loadClasses() {
@@ -44,6 +48,7 @@ async function loadClasses() {
     api('/api/clases/'), api('/api/reservas/'), api('/api/esperas/'),
   ]);
   const subscribed = new Set([...reservations, ...waiting].map(item => item.clase));
+  // Una reserva confirmada y una espera usan el mismo boton de cancelacion.
   const container = document.getElementById('clases-lista');
   container.replaceChildren();
   const upcoming = classes.filter(item => item.activa && new Date(item.inicio) > new Date());

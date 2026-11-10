@@ -1,3 +1,4 @@
+{# Formulario compartido: protege el POST y muestra errores de validacion. #}
 <form method="post" class="form">{% csrf_token %}
   {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
   {% for field in form %}

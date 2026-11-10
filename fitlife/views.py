@@ -1,3 +1,5 @@
+"""API REST para membresías, clases, códigos QR y métricas de ocupación."""
+
 from io import BytesIO
 
 import qrcode
@@ -21,6 +23,7 @@ from .serializers import (ClaseSerializer, EscaneoSerializer, ListaEsperaSeriali
                           RegistroAccesoSerializer, ReservaSerializer)
 from .services import cancelar, promover_espera, registrar_acceso, reservar, tiene_membresia
 
+# La firma identifica el uso del token y limita su validez a dos minutos.
 QR_SALT = "fitlife.acceso"
 QR_MAX_AGE = 120
 
@@ -44,10 +47,23 @@ class MembresiaViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Membresia.objects.select_related("socio", "plan").order_by("-fin")
+        # El equipo ve todas las membresias; cada socio solo ve las suyas.
         return qs if es_equipo(self.request.user) else qs.filter(socio=self.request.user)
 
     def get_permissions(self):
         return [IsAuthenticated()] if self.action in {"list", "retrieve"} else [Equipo()]
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        # Coordina la creacion de membresias con la confirmacion de pedidos.
+        User.objects.select_for_update().get(pk=serializer.validated_data["socio"].pk)
+        serializer.save()
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        socio = serializer.validated_data.get("socio", serializer.instance.socio)
+        User.objects.select_for_update().get(pk=socio.pk)
+        serializer.save()
 
 
 class PagoViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
@@ -77,6 +93,7 @@ class ClaseViewSet(ProtectedDeleteMixin, viewsets.ModelViewSet):
         if serializer.validated_data.get("cupo_maximo", clase.cupo_maximo) < clase.reservas.count():
             raise ValidationError("El cupo no puede ser inferior a las reservas existentes.")
         self.perform_update(serializer)
+        # Al ampliar el cupo, la lista de espera puede ocupar las plazas libres.
         promover_espera(clase)
         clase = self.get_queryset().get(pk=clase.pk)
         return Response(self.get_serializer(clase).data)
@@ -127,6 +144,7 @@ class AccesoViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = EscaneoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
+            # Se rechazan firmas alteradas, vencidas o usuarios inexistentes.
             socio_id = signing.loads(serializer.validated_data["token"], salt=QR_SALT, max_age=QR_MAX_AGE)
             if not isinstance(socio_id, int) or isinstance(socio_id, bool):
                 raise signing.BadSignature("Token inválido")
@@ -159,6 +177,7 @@ def qr(request):
     buffer = BytesIO()
     qrcode.make(token).save(buffer, format="PNG")
     response = HttpResponse(buffer.getvalue(), content_type="image/png")
+    # El QR es temporal y no debe almacenarse en la cache del navegador.
     add_never_cache_headers(response)
     return response
 

@@ -1,3 +1,5 @@
+"""Modelos relacionales y restricciones de socios, clases, accesos y tienda."""
+
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
@@ -20,6 +22,7 @@ class User(AbstractUser):
         SOCIO = "socio", "Socio"
 
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.SOCIO)
+    # La presencia cambia al registrar una entrada o salida, no desde formularios.
     dentro = models.BooleanField(default=False, editable=False)
     objects = FitlifeUserManager()
 
@@ -41,6 +44,7 @@ class Membresia(models.Model):
         VENCIDA = "vencida", "Vencida"
         CONGELADA = "congelada", "Congelada"
 
+    # PROTECT conserva el historial si el socio o el plan tienen registros asociados.
     socio = models.ForeignKey(User, on_delete=models.PROTECT, related_name="membresias")
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="membresias")
     inicio = models.DateField()
@@ -63,6 +67,7 @@ class Membresia(models.Model):
 
     @property
     def estado_efectivo(self):
+        # La fecha vencida se refleja al consultar, sin modificar el estado guardado.
         if self.estado == self.Estado.ACTIVA and self.fin < timezone.localdate():
             return self.Estado.VENCIDA
         return self.estado
@@ -79,6 +84,78 @@ class Pago(models.Model):
 
     def __str__(self):
         return f"{self.membresia}: {self.monto}"
+
+
+class Producto(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+    descripcion = models.TextField(blank=True)
+    precio = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    stock = models.PositiveIntegerField(default=0)
+    activo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.nombre
+
+
+class CarritoItem(models.Model):
+    socio = models.ForeignKey(User, on_delete=models.CASCADE, related_name="carrito")
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, null=True, blank=True)
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, null=True, blank=True)
+    cantidad = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+
+    class Meta:
+        # Cada linea representa un plan o producto; solo puede haber un plan por socio.
+        constraints = [
+            models.CheckConstraint(condition=(Q(plan__isnull=False, producto__isnull=True, cantidad=1) | Q(plan__isnull=True, producto__isnull=False, cantidad__gte=1)), name="fitlife_carrito_item_valido"),
+            models.UniqueConstraint(fields=["socio"], condition=Q(plan__isnull=False), name="fitlife_carrito_un_plan"),
+            models.UniqueConstraint(fields=["socio", "producto"], condition=Q(producto__isnull=False), name="fitlife_carrito_producto_unico"),
+        ]
+
+    @property
+    def articulo(self):
+        return self.plan or self.producto
+
+    @property
+    def subtotal(self):
+        return self.articulo.precio * self.cantidad
+
+
+class Pedido(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente de pago"
+        CONFIRMADO = "confirmado", "Pago confirmado"
+        CANCELADO = "cancelado", "Cancelado"
+
+    socio = models.ForeignKey(User, on_delete=models.PROTECT, related_name="pedidos")
+    creado = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=10, choices=Estado.choices, default=Estado.PENDIENTE)
+    total = models.DecimalField(max_digits=12, decimal_places=2)
+    confirmado_por = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="pedidos_confirmados")
+    confirmado_en = models.DateTimeField(null=True, blank=True)
+    membresia = models.OneToOneField(Membresia, on_delete=models.PROTECT, null=True, blank=True)
+
+    class Meta:
+        ordering = ["-creado", "-pk"]
+
+
+class PedidoItem(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.PROTECT, related_name="items")
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, null=True, blank=True)
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, null=True, blank=True)
+    # Estos datos conservan los valores del articulo al momento de crear el pedido.
+    nombre = models.CharField(max_length=100)
+    precio = models.DecimalField(max_digits=10, decimal_places=2)
+    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    duracion_dias = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=(Q(plan__isnull=False, producto__isnull=True, cantidad=1, duracion_dias__gte=1) | Q(plan__isnull=True, producto__isnull=False, cantidad__gte=1, duracion_dias__isnull=True)), name="fitlife_pedido_item_valido"),
+        ]
+
+    @property
+    def subtotal(self):
+        return self.precio * self.cantidad
 
 
 class Clase(models.Model):
@@ -117,6 +194,7 @@ class ListaEspera(models.Model):
     creada = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        # El orden de creacion determina quien recibe la siguiente plaza disponible.
         ordering = ["creada", "pk"]
         constraints = [models.UniqueConstraint(fields=["socio", "clase"], name="fitlife_espera_unica")]
 

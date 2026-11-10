@@ -1,3 +1,5 @@
+"""Conversión y validación de los datos intercambiados por la API REST."""
+
 from rest_framework import serializers
 
 from .models import Clase, ListaEspera, Membresia, Pago, Plan, RegistroAcceso, Reserva, User
@@ -10,6 +12,7 @@ class PlanSerializer(serializers.ModelSerializer):
 
 
 class MembresiaSerializer(serializers.ModelSerializer):
+    # Son propiedades calculadas por el modelo, no campos editables de la API.
     habilitada = serializers.BooleanField(read_only=True)
     estado_efectivo = serializers.CharField(read_only=True)
 
@@ -23,6 +26,7 @@ class MembresiaSerializer(serializers.ModelSerializer):
         return socio
 
     def validate(self, attrs):
+        # En una edicion parcial se conservan las fechas que no se enviaron.
         inicio = attrs.get("inicio", getattr(self.instance, "inicio", None))
         fin = attrs.get("fin", getattr(self.instance, "fin", None))
         if inicio and fin and fin < inicio:
@@ -51,6 +55,7 @@ class ClaseSerializer(serializers.ModelSerializer):
 
 
 class ReservaSerializer(serializers.ModelSerializer):
+    # Las inscripciones se modifican mediante acciones que verifican cupos.
     class Meta:
         model = Reserva
         fields = ["id", "socio", "clase", "creada"]

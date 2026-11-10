@@ -14,10 +14,11 @@
   <div class="wrap nav">
     <a class="brand" href="{% url 'home' %}" aria-label="FitLife, ir al inicio"><img src="{% static 'fitlife/img/logo.svg' %}" alt=""><span>FIT<span>LIFE</span></span></a>
     <nav class="nav-links" aria-label="Navegación principal">
-      <a href="{% url 'home' %}#planes">Planes</a><a href="{% url 'home' %}#clases">Clases</a><a href="{% url 'home' %}#sedes">Sedes</a>
+      <a href="{% url 'home' %}#planes">Planes</a><a href="{% url 'home' %}#clases">Clases</a><a href="{% url 'tienda' %}">Tienda</a><a href="{% url 'home' %}#sedes">Sedes</a>
     </nav>
     <div class="nav-actions">
       {% if user.is_authenticated %}
+        {% if user.role == 'socio' and not user.is_superuser %}<a class="text-button" href="{% url 'carrito' %}">Carrito</a>{% endif %}
         <a class="btn btn-small btn-outline" href="{% url 'panel' %}">Mi panel</a>
         <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-button" type="submit">Salir</button></form>
       {% else %}

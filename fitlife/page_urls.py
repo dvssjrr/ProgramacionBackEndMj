@@ -1,6 +1,9 @@
-from django.urls import path
-from . import pages
+"""Rutas de las páginas y acciones HTML de FitLife."""
 
+from django.urls import path
+from . import pages, shop_views
+
+# Las paginas visibles y los formularios usan estas rutas con nombres estables.
 urlpatterns = [
     path("", pages.inicio, name="home"),
     path("registro/", pages.registro, name="registro"),
@@ -16,4 +19,12 @@ urlpatterns = [
     path("panel/gestion/<str:tipo>/", pages.gestionar, name="gestionar"),
     path("panel/gestion/<str:tipo>/<int:objeto_id>/", pages.gestionar, name="editar_gestion"),
     path("panel/gestion/<str:tipo>/<int:objeto_id>/eliminar/", pages.eliminar, name="eliminar_gestion"),
+    path("tienda/", shop_views.tienda, name="tienda"),
+    path("carrito/", shop_views.carrito, name="carrito"),
+    path("carrito/agregar/<str:tipo>/<int:pk>/", shop_views.agregar_articulo, name="agregar_articulo"),
+    path("carrito/item/<int:pk>/", shop_views.actualizar_item, name="actualizar_item"),
+    path("carrito/solicitar/", shop_views.solicitar, name="solicitar_pedido"),
+    path("pedidos/<int:pk>/cancelar/", shop_views.cancelar, name="cancelar_pedido"),
+    path("panel/pedidos/", shop_views.pedidos_equipo, name="pedidos_equipo"),
+    path("panel/pedidos/<int:pk>/confirmar/", shop_views.confirmar, name="confirmar_pedido"),
 ]

@@ -10,14 +10,14 @@
         <div class="actions"><a class="btn btn-red" href="#planes">Explorar planes <span>↗</span></a><a class="btn btn-outline" href="{% url 'login' %}">Ya soy miembro</a></div>
         <div class="hero-note"><span class="mini-mark">FL</span><span>Tu próximo paso<br><strong>comienza aquí.</strong></span></div>
       </div>
-      <div class="hero-art"><img src="{% static 'fitlife/img/gym-interior.jpg' %}" alt="Fotografía de referencia de un gimnasio con máquinas de entrenamiento"><span class="art-label">FOTOGRAFÍA REFERENCIAL<br><strong>FITLIFE / TRAINING CLUB</strong></span></div>
+      <div class="hero-art"><img src="{% static 'fitlife/img/chiswick.webp' %}" alt="Fotografía de referencia de un gimnasio con máquinas de entrenamiento"><span class="art-label">FOTOGRAFÍA REFERENCIAL<br><strong>FITLIFE / TRAINING CLUB</strong></span></div>
     </div>
   </section>
   <div class="ticker" aria-hidden="true"><div class="wrap">FUERZA <span>✦</span> MOVIMIENTO <span>✦</span> COMUNIDAD <span>✦</span> BIENESTAR <span>✦</span> CONSTANCIA</div></div>
   <section class="section wrap" id="planes">
     <div class="section-head"><div><span class="eyebrow red">01 / MEMBRESÍAS</span><h2>UN PLAN PARA<br><em>TU OBJETIVO.</em></h2></div><p>Encuentra el plan que se ajusta a tu rutina. Da el primer paso y empieza a moverte.</p></div>
     <div class="cards plans">
-      {% for plan in planes %}<article class="card plan-card"><span class="card-index">PLAN {{ forloop.counter|stringformat:"02d" }}</span><h3>{{ plan.nombre }}</h3><p>{{ plan.descripcion|default:"Consulta los beneficios disponibles para este plan." }}</p><p class="price">${{ plan.precio }} <small>/ {{ plan.duracion_dias }} días</small></p><a class="btn btn-outline light" href="{% url 'registro' %}">Crear mi cuenta ↗</a></article>
+      {% for plan in planes %}<article class="card plan-card"><span class="card-index">PLAN {{ forloop.counter|stringformat:"02d" }}</span><h3>{{ plan.nombre }}</h3><p>{{ plan.descripcion|default:"Consulta los beneficios disponibles para este plan." }}</p><p class="price">${{ plan.precio }} <small>/ {{ plan.duracion_dias }} días</small></p><a class="btn btn-outline light" href="{% url 'tienda' %}">Ver en tienda ↗</a></article>
       {% empty %}<div class="empty">Los planes estarán disponibles próximamente. Consulta con administración.</div>{% endfor %}
     </div>
   </section>
@@ -29,7 +29,7 @@
     </div>
     <a class="inline-link" href="{% if user.is_authenticated %}{% url 'panel' %}{% else %}{% url 'login' %}{% endif %}">Ver mis clases y reservas →</a>
   </div></section>
-  <section class="section wrap location" id="sedes"><div><span class="eyebrow red">03 / NUESTRAS SEDES</span><h2>UN LUGAR PARA<br><em>SUPERARTE.</em></h2><p>Conoce dónde entrenar con FitLife. Las ubicaciones y horarios se informarán próximamente.</p><a class="btn btn-red" href="{% url 'registro' %}">Únete a FitLife ↗</a></div><div class="location-art"><img src="{% static 'fitlife/img/gym-interior.jpg' %}" alt="Fotografía de referencia de equipos y máquinas de gimnasio"><span>FOTOGRAFÍA REFERENCIAL / ESPACIOS DE ENTRENAMIENTO</span></div></section>
+  <section class="section wrap location" id="sedes"><div><span class="eyebrow red">03 / NUESTRAS SEDES</span><h2>UN LUGAR PARA<br><em>SUPERARTE.</em></h2><p>Conoce dónde entrenar con FitLife. Las ubicaciones y horarios se informarán próximamente.</p><a class="btn btn-red" href="{% url 'registro' %}">Únete a FitLife ↗</a></div><div class="location-art"><img src="{% static 'fitlife/img/chiswick.webp' %}" alt="Fotografía de referencia de una sala de entrenamiento con pesas y máquinas"><span>FOTOGRAFÍA REFERENCIAL / ESPACIOS DE ENTRENAMIENTO</span></div></section>
   <section class="cta"><div class="wrap"><span class="eyebrow">EL MOMENTO ES AHORA</span><h2>EMPIEZA A<br>MOVERTE.</h2><a class="btn btn-white" href="{% url 'registro' %}">Crear cuenta ↗</a></div></section>
 </main>
 {% endblock %}

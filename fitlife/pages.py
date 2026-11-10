@@ -1,3 +1,5 @@
+"""Páginas públicas y paneles por rol, incluida la gestión administrativa."""
+
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -12,9 +14,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import (ClaseForm, ConfiguracionForm, MembresiaForm, PagoForm, PlanForm,
+from .forms import (ClaseForm, ConfiguracionForm, MembresiaForm, PagoForm, PlanForm, ProductoForm,
                     RegistroForm, UsuarioCrearForm, UsuarioEditarForm)
-from .models import Clase, Configuracion, Membresia, Pago, Plan, RegistroAcceso, User
+from .models import Clase, Configuracion, Membresia, Pago, Plan, Producto, RegistroAcceso, User
 from .permissions import es_administrador, es_equipo
 from .services import promover_espera
 
@@ -33,6 +35,7 @@ def registro(request):
     form = RegistroForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         user = form.save(commit=False)
+        # El registro publico nunca permite elegir un rol administrativo.
         user.role = User.Role.SOCIO
         user.save()
         login(request, user)
@@ -43,6 +46,7 @@ def registro(request):
 @login_required
 def panel(request):
     user = request.user
+    # Cada rol recibe solamente la informacion necesaria para su panel.
     context = {"es_equipo": es_equipo(user), "es_admin": es_administrador(user), "es_instructor": user.role == User.Role.INSTRUCTOR and not user.is_superuser}
     if context["es_equipo"]:
         context.update({
@@ -73,6 +77,7 @@ def gestionar_clases(request, clase_id=None):
     if not es_equipo(request.user):
         raise PermissionDenied
     with transaction.atomic():
+        # Las reservas y cambios de cupo comparten el bloqueo de esta clase.
         clase = get_object_or_404(Clase.objects.select_for_update(), pk=clase_id) if clase_id else None
         form = ClaseForm(request.POST if request.method == "POST" else None, instance=clase)
         if request.method == "POST" and form.is_valid():
@@ -116,10 +121,12 @@ def csrf_failure(request, reason=""):
     }, status=403)
 
 
+# Mapa de recursos permitidos para la vista administrativa compartida.
 MANAGEMENT = {
     "planes": (Plan, PlanForm, "Planes", "plan"),
     "membresias": (Membresia, MembresiaForm, "Membresías", "membresía"),
     "pagos": (Pago, PagoForm, "Pagos", "pago"),
+    "productos": (Producto, ProductoForm, "Productos", "producto"),
 }
 
 
@@ -130,12 +137,17 @@ def gestionar(request, tipo, objeto_id=None):
     if tipo not in MANAGEMENT:
         raise PermissionDenied
     model, form_class, titulo, singular = MANAGEMENT[tipo]
-    obj = get_object_or_404(model, pk=objeto_id) if objeto_id else None
-    form = form_class(request.POST if request.method == "POST" else None, instance=obj)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, f"{singular.capitalize()} guardado correctamente.")
-        return redirect("gestionar", tipo=tipo)
+    with transaction.atomic():
+        # El catalogo se bloquea para no cambiar precios durante la compra.
+        qs = model.objects.select_for_update() if tipo in {"productos", "planes"} else model.objects
+        obj = get_object_or_404(qs, pk=objeto_id) if objeto_id else None
+        form = form_class(request.POST if request.method == "POST" else None, instance=obj)
+        if request.method == "POST" and form.is_valid():
+            if tipo == "membresias":
+                User.objects.select_for_update().get(pk=form.cleaned_data["socio"].pk)
+            form.save()
+            messages.success(request, f"{singular.capitalize()} guardado correctamente.")
+            return redirect("gestionar", tipo=tipo)
     queryset = model.objects.all().order_by("-pk")
     if tipo == "membresias":
         queryset = queryset.select_related("socio", "plan")

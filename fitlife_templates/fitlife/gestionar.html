@@ -5,11 +5,13 @@
   <a class="inline-link" href="{% url 'panel' %}#gestion">← Volver a gestión</a>
   <div class="section-head"><div><span class="eyebrow red">GESTIÓN / {{ titulo|upper }}</span><h1>{{ titulo|upper }}<em>.</em></h1></div><p>Consulta y actualiza la información del gimnasio.</p></div>
   <div class="member-grid">
+    {# El mismo formulario y listado sirven para cada tipo de recurso. #}
     <section class="surface"><h2>{% if editando %}Editar{% else %}Crear{% endif %} {{ singular }}</h2>{% include "fitlife/_form.html" %}{% if editando %}<a class="inline-link" href="{% url 'gestionar' tipo %}">Cancelar edición</a>{% endif %}</section>
     <section><h2>{{ titulo }} registrados</h2>
       {% for item in items %}
       <article class="surface record">
         {% if tipo == 'planes' %}<h3>{{ item.nombre }}</h3><p>${{ item.precio }} · {{ item.duracion_dias }} días · {% if item.activo %}Activo{% else %}Inactivo{% endif %}</p>
+        {% elif tipo == 'productos' %}<h3>{{ item.nombre }}</h3><p>${{ item.precio }} · {{ item.stock }} disponibles · {% if item.activo %}Activo{% else %}Inactivo{% endif %}</p>
         {% elif tipo == 'membresias' %}<h3>{{ item.socio.username }} · {{ item.plan.nombre }}</h3><p>{{ item.inicio|date:"d/m/Y" }} — {{ item.fin|date:"d/m/Y" }} · {{ item.get_estado_display }}{% if item.estado_efectivo != item.estado %} (vencida por fecha){% endif %}</p>
         {% else %}<h3>{{ item.membresia.socio.username }} · ${{ item.monto }}</h3><p>{{ item.fecha|date:"d/m/Y H:i" }} · {{ item.referencia|default:"Sin referencia" }}</p>{% endif %}
         <div class="record-actions"><a class="inline-link" href="{% url 'editar_gestion' tipo item.pk %}">Editar ↗</a>

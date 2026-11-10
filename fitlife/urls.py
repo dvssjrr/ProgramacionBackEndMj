@@ -1,8 +1,11 @@
+"""Rutas de la API REST y acciones de acceso y reservas."""
+
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from . import views
 
+# El router genera las rutas de cada recurso y sus acciones REST.
 router = DefaultRouter()
 router.register("planes", views.PlanViewSet)
 router.register("membresias", views.MembresiaViewSet, basename="membresia")

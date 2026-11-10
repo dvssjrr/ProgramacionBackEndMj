@@ -1,0 +1,16 @@
+{% extends "fitlife/base.html" %}
+{% block title %}Mi carrito | FitLife{% endblock %}
+{% block content %}
+<main class="wrap section"><span class="eyebrow red">TU COMPRA</span><h1>MI <em>CARRITO.</em></h1>
+{# Crear un pedido no realiza un cobro ni reserva el stock. #}
+<p class="muted">Los precios se confirman al crear el pedido. El stock no se reserva hasta que recepción confirme el pago.</p>
+{% for item in items %}<article class="surface record"><h3>{{ item.articulo.nombre }}</h3><p>${{ item.articulo.precio }} × {{ item.cantidad }} = ${{ item.subtotal }}</p>
+<form class="record-actions" method="post" action="{% url 'actualizar_item' item.pk %}">{% csrf_token %}
+{% if item.producto %}<label for="cantidad-{{ item.pk }}">Cantidad</label><input id="cantidad-{{ item.pk }}" type="number" name="cantidad" min="0" max="10000" value="{{ item.cantidad }}" required><button class="btn btn-outline btn-small">Actualizar</button>{% else %}<input type="hidden" name="cantidad" value="0"><button class="btn btn-outline btn-small">Quitar plan</button>{% endif %}
+</form>{% if item.producto %}<small class="muted">Usa cantidad 0 para quitar el producto.</small>{% endif %}</article>
+{% empty %}<div class="empty">Tu carrito está vacío. <a class="inline-link" href="{% url 'tienda' %}">Explorar la tienda →</a></div>{% endfor %}
+{% if items %}<div class="surface"><h2>Total: ${{ total }}</h2><p>Al crear el pedido no se realiza un cobro. Paga y retira en recepción.</p><form method="post" action="{% url 'solicitar_pedido' %}">{% csrf_token %}<button class="btn btn-red">Crear pedido pendiente →</button></form></div>{% endif %}
+<section class="panel-section"><h2>Mis pedidos recientes</h2>{% for pedido in pedidos %}<article class="surface record"><h3>Pedido #{{ pedido.pk }} · {{ pedido.get_estado_display }}</h3><p>{{ pedido.creado|date:"d/m/Y H:i" }} · Total ${{ pedido.total }}</p><ul>{% for item in pedido.items.all %}<li>{{ item.nombre }} · {{ item.cantidad }} × ${{ item.precio }}</li>{% endfor %}</ul>
+{% if pedido.estado == 'pendiente' %}<p>Acércate a recepción para pagar y confirmar disponibilidad.</p><form method="post" action="{% url 'cancelar_pedido' pedido.pk %}">{% csrf_token %}<button class="btn btn-outline btn-small">Cancelar pedido</button></form>{% endif %}</article>{% empty %}<div class="empty">Todavía no tienes pedidos.</div>{% endfor %}</section>
+</main>
+{% endblock %}
