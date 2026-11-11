@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "fitlife",
 ]
 MIDDLEWARE = [
+    "fitlife.middleware.TabSessionMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -60,9 +61,10 @@ DATABASES = {"default": {
 AUTH_USER_MODEL = "fitlife.User"
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "fitlife.validators.FitLifePasswordComplexityValidator"},
 ]
 REST_FRAMEWORK = {
     # La API usa la sesion de Django y exige autenticacion por defecto.
@@ -77,10 +79,10 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "fitlife_static"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-LOGIN_URL = "/login/"
+LOGIN_URL = "login"
 CSRF_FAILURE_VIEW = "fitlife.pages.csrf_failure"
-LOGIN_REDIRECT_URL = "/panel/"
-LOGOUT_REDIRECT_URL = "/"
+LOGIN_REDIRECT_URL = "panel"
+LOGOUT_REDIRECT_URL = "home"
 SESSION_COOKIE_HTTPONLY = True
 # Activar solo cuando el proxy sirve HTTPS y establece X-Forwarded-Proto.
 SESSION_COOKIE_SECURE = os.environ.get("FITLIFE_HTTPS", "false").lower() == "true"
@@ -88,3 +90,4 @@ CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
 SECURE_SSL_REDIRECT = SESSION_COOKIE_SECURE
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if SESSION_COOKIE_SECURE else None
 CSRF_TRUSTED_ORIGINS = [v.strip() for v in os.environ.get("FITLIFE_CSRF_TRUSTED_ORIGINS", "").split(",") if v.strip()]
+TAB_SESSION_ISOLATION = os.environ.get("FITLIFE_TAB_SESSIONS", "false").lower() in {"1", "true", "yes"}

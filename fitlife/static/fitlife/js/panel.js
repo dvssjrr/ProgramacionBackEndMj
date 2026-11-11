@@ -1,6 +1,7 @@
 const message = document.getElementById('mensaje');
 const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
 const csrf = tokenInput ? tokenInput.value : '';
+const basePath = document.documentElement.dataset.sessionBase || '';
 // Muestra errores y confirmaciones sin insertar HTML proporcionado por el usuario.
 function notify(text, error = false) {
   message.className = `alert ${error ? 'error' : 'success'}`;
@@ -8,7 +9,7 @@ function notify(text, error = false) {
 }
 async function api(url, options = {}) {
   // La sesion y el token CSRF acompanian las peticiones de la interfaz.
-  const response = await fetch(url, {
+  const response = await fetch(`${basePath}${url}`, {
     credentials: 'same-origin', ...options,
     headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/json', ...(options.headers || {})},
   });
@@ -23,17 +24,26 @@ async function refreshAforo() {
 }
 const scanner = document.getElementById('escanear');
 if (scanner) {
-  // Solo el panel del equipo incluye el formulario de control de acceso.
   scanner.addEventListener('submit', async event => {
     event.preventDefault();
+    const button = scanner.querySelector('button[type="submit"]');
+    button.disabled = true;
     try {
-      await api('/api/accesos/escanear/', {method: 'POST', body: JSON.stringify({
+      const result = await api('/api/accesos/escanear/', {method: 'POST', body: JSON.stringify({
         token: document.getElementById('codigo').value, accion: document.getElementById('accion').value,
       })});
-      notify('Acceso registrado correctamente.');
-      await refreshAforo();
-    } catch (error) { notify(error.message, true); }
+      notify(`${result.accion === 'entrada' ? 'Entrada' : 'Salida'} registrada para socio #${result.socio}.`);
+      scanner.reset();
+      document.getElementById('codigo').focus();
+    } catch (error) {
+      notify(error.message, true);
+    } finally {
+      button.disabled = false;
+      if (document.getElementById('aforo-dentro')) await refreshAforo().catch(error => notify(error.message, true));
+    }
   });
+}
+if (document.getElementById('aforo-dentro')) {
   refreshAforo().catch(error => notify(error.message, true));
   setInterval(() => refreshAforo().catch(error => notify(error.message, true)), 10000);
 }
@@ -41,7 +51,7 @@ async function refreshQR() {
   const perfil = await api('/api/perfil/');
   document.getElementById('token').value = perfil.qr_token;
   // La URL variable evita reutilizar una imagen QR caducada.
-  document.getElementById('qr').src = `/api/perfil/qr/?t=${Date.now()}`;
+  document.getElementById('qr').src = `${basePath}/api/perfil/qr/?t=${Date.now()}`;
 }
 async function loadClasses() {
   const [classes, reservations, waiting] = await Promise.all([

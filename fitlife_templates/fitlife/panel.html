@@ -27,13 +27,10 @@
           <a class="quick-card" href="{% url 'gestionar' 'productos' %}"><span class="quick-icon">◇</span><h3>Productos</h3><p>Gestiona precios y stock.</p><span>Administrar ↗</span></a>
           <a class="quick-card" href="{% url 'pedidos_equipo' %}"><span class="quick-icon">$</span><h3>Pedidos</h3><p>Confirma pagos en recepción.</p><span>Ver pedidos ↗</span></a>
           <a class="quick-card" href="{% url 'gestionar_clases' %}"><span class="quick-icon">▦</span><h3>Clases y horarios</h3><p>Gestiona cupos e instructores.</p><span>Abrir gestión ↗</span></a>
-          <a class="quick-card" href="#control"><span class="quick-icon">◎</span><h3>Control de acceso</h3><p>Escanea códigos de socios.</p><span>Ir al control ↗</span></a>
+          <a class="quick-card" href="{% url 'acceso_gimnasio' %}"><span class="quick-icon">◎</span><h3>Ingreso al gimnasio</h3><p>Valida QR y registra entradas y salidas.</p><span>Abrir control ↗</span></a>
           <a class="quick-card" href="{% url 'reportes' %}"><span class="quick-icon">◷</span><h3>Reportes de acceso</h3><p>Consulta el historial del gimnasio.</p><span>Ver registros ↗</span></a>
           <div class="quick-card"><span class="quick-icon">⌖</span><h3>Sedes</h3><p>La información de ubicaciones está pendiente de configuración. El aforo es global.</p></div>
         </div>
-      </section>
-      <section id="control" class="panel-section surface"><span class="eyebrow red">RECEPCIÓN</span><h2>Control de acceso</h2><p class="muted">Pega el código que aparece en el perfil del socio. El aforo se actualiza cada 10 segundos.</p>
-        <form id="escanear" class="form">{% csrf_token %}<label for="codigo">Código del socio</label><textarea id="codigo" rows="3" required></textarea><label for="accion">Acción</label><select id="accion"><option value="entrada">Entrada</option><option value="salida">Salida</option></select><button class="btn btn-red">Validar acceso →</button></form>
       </section>
     {% elif es_instructor %}
       <section class="panel-section" id="mis-clases"><div class="subheading"><div><span class="eyebrow red">TU AGENDA</span><h2>Clases de hoy</h2></div></div>
@@ -52,4 +49,4 @@
   </main>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{% static 'fitlife/js/panel.js' %}" defer></script>{% endblock %}
+{% block scripts %}<script src="{% static 'fitlife/js/panel.js' %}?v=20261111-2" defer></script>{% endblock %}

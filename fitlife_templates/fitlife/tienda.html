@@ -3,7 +3,7 @@
 {% block content %}
 <main class="wrap section">
   <span class="eyebrow red">FITLIFE / TIENDA</span><h1>ENTRENA A TU <em>MANERA.</em></h1>
-  <p class="muted">Elige un plan y productos para retiro en recepción. No se realiza ningún pago en línea.</p>
+  <p class="muted">Elige un plan y productos. El carrito incluye una interfaz de pago de prueba para crédito y débito; no se realiza ningún cobro real.</p>
   {% if puede_comprar or not user.is_authenticated %}<a class="btn btn-outline btn-small" href="{% url 'carrito' %}">Ver mi carrito →</a>{% endif %}
   <section class="panel-section"><h2>Planes de membresía</h2><p class="muted">Puedes seleccionar un plan por pedido. El último plan añadido reemplaza al anterior.</p><div class="cards">
     {% for plan in planes %}<article class="card plan-card"><h3>{{ plan.nombre }}</h3><p>{{ plan.descripcion }}</p><p class="price">${{ plan.precio }} <small>/ {{ plan.duracion_dias }} días</small></p>

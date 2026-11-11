@@ -8,7 +8,7 @@ from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.utils import timezone
 
 from .models import CarritoItem, Membresia, Pago, Pedido, Plan, Producto, User
-from .shop import agregar, confirmar_pedido, crear_pedido
+from .shop import agregar, confirmar_pedido, crear_pedido, simular_pago
 
 
 class TiendaTests(TestCase):
@@ -42,6 +42,85 @@ class TiendaTests(TestCase):
         self.assertEqual(Pago.objects.get(membresia=pedido.membresia).monto, 100)
         self.client.post(f"/panel/pedidos/{pedido.pk}/confirmar/")
         self.assertEqual(Pago.objects.count(), 1)
+
+    def test_simulador_tarjeta_no_cobra_confirma_ni_guarda_datos_de_tarjeta(self):
+        self.client.force_login(self.socio)
+        agregar(self.socio, "plan", self.plan.pk)
+        agregar(self.socio, "producto", self.producto.pk)
+        response = self.client.post("/carrito/solicitar/")
+        pedido = Pedido.objects.get()
+        self.assertRedirects(response, f"/pedidos/{pedido.pk}/pago-simulado/")
+        self.assertContains(self.client.get(f"/pedidos/{pedido.pk}/pago-simulado/"), "Tarjeta de crédito")
+        self.assertContains(self.client.get(f"/pedidos/{pedido.pk}/pago-simulado/"), "No ingreses número real")
+        self.assertContains(self.client.get(f"/pedidos/{pedido.pk}/pago-simulado/"), "Simular aprobación")
+
+        rejected = self.client.post(
+            f"/pedidos/{pedido.pk}/pago-simulado/",
+            {"metodo": "debito", "resultado": "rechazado", "numero_tarjeta": "4242424242424242", "cvv": "123"},
+        )
+        self.assertRedirects(rejected, f"/pedidos/{pedido.pk}/pago-simulado/")
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.metodo_pago_simulado, Pedido.MetodoPagoSimulado.DEBITO)
+        self.assertEqual(pedido.resultado_pago_simulado, Pedido.ResultadoPagoSimulado.RECHAZADO)
+        self.assertEqual(pedido.estado, Pedido.Estado.PENDIENTE)
+        self.assertFalse(hasattr(pedido, "numero_tarjeta"))
+        self.assertFalse(hasattr(pedido, "cvv"))
+        self.assertFalse(Pago.objects.exists())
+        self.assertFalse(Membresia.objects.exists())
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.stock, 2)
+
+        approved = self.client.post(
+            f"/pedidos/{pedido.pk}/pago-simulado/",
+            {"metodo": "credito", "resultado": "aprobado"},
+        )
+        self.assertRedirects(approved, f"/pedidos/{pedido.pk}/pago-simulado/")
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.resultado_pago_simulado, Pedido.ResultadoPagoSimulado.APROBADO)
+        self.assertEqual(pedido.estado, Pedido.Estado.PENDIENTE)
+        self.assertContains(self.client.get(f"/pedidos/{pedido.pk}/pago-simulado/"), "El pedido sigue pendiente")
+        self.assertContains(self.client.get(f"/pedidos/{pedido.pk}/pago-simulado/"), "no se mueve dinero")
+        self.assertFalse(Pago.objects.exists())
+        self.assertFalse(Membresia.objects.exists())
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.stock, 2)
+
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get(f"/pedidos/{pedido.pk}/pago-simulado/").status_code, 403)
+        self.client.post(f"/panel/pedidos/{pedido.pk}/confirmar/")
+        pedido.refresh_from_db()
+        self.producto.refresh_from_db()
+        self.assertEqual(pedido.estado, Pedido.Estado.CONFIRMADO)
+        self.assertEqual(self.producto.stock, 1)
+        self.assertEqual(Pago.objects.count(), 1)
+
+    def test_simulador_protege_propiedad_metodo_y_estado_del_pedido(self):
+        agregar(self.socio, "producto", self.producto.pk)
+        pedido = crear_pedido(self.socio)
+        self.client.force_login(self.otro)
+        self.assertEqual(self.client.get(f"/pedidos/{pedido.pk}/pago-simulado/").status_code, 404)
+        self.assertEqual(
+            self.client.post(f"/pedidos/{pedido.pk}/pago-simulado/", {
+                "metodo": "bitcoin", "resultado": "aprobado",
+            }).status_code, 404,
+        )
+        self.client.force_login(self.socio)
+        invalid = self.client.post(f"/pedidos/{pedido.pk}/pago-simulado/", {
+            "metodo": "bitcoin", "resultado": "aprobado",
+        })
+        self.assertEqual(invalid.status_code, 200)
+        self.assertContains(invalid, "Selecciona tarjeta de crédito o débito.")
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.metodo_pago_simulado, "")
+        self.assertEqual(pedido.resultado_pago_simulado, "")
+        pedido.estado = Pedido.Estado.CANCELADO
+        pedido.save(update_fields=["estado"])
+        self.assertEqual(self.client.get(f"/pedidos/{pedido.pk}/pago-simulado/").status_code, 200)
+        canceled_attempt = self.client.post(f"/pedidos/{pedido.pk}/pago-simulado/", {
+            "metodo": "credito", "resultado": "aprobado",
+        })
+        self.assertEqual(canceled_attempt.status_code, 200)
+        self.assertContains(canceled_attempt, "Solo se pueden simular pagos de pedidos pendientes.")
 
     def test_stock_insuficiente_no_confirma_ni_activa(self):
         agregar(self.socio, "plan", self.plan.pk)

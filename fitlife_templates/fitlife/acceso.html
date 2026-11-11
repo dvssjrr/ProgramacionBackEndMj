@@ -1,0 +1,33 @@
+{% extends "fitlife/base.html" %}
+{% load static %}
+{% block title %}Ingreso al gimnasio | FitLife{% endblock %}
+{% block content %}
+<main class="wrap section narrow">
+  <a class="inline-link" href="{% url 'panel' %}">← Volver al panel</a>
+  <div class="section-head">
+    <div><span class="eyebrow red">RECEPCIÓN / CONTROL</span><h1>INGRESO AL<br><em>GIMNASIO.</em></h1></div>
+    <p>Valida aquí el QR del socio y registra su entrada o salida.</p>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><span>PERSONAS DENTRO</span><strong id="aforo-dentro">{{ dentro }}</strong>
+      <small id="aforo-detalle">{% if capacidad %}Capacidad {{ capacidad.capacidad }}{% else %}Configura la capacidad{% endif %}</small>
+    </div>
+  </div>
+  <section class="surface panel-section">
+    <span class="eyebrow red">ESCÁNER DE RECEPCIÓN</span>
+    <h2>Validar código del socio</h2>
+    <p class="muted">El socio encuentra su código en <strong>Mi panel → Mi acceso → Tu código QR</strong>.
+      Escanea el QR con un lector conectado o pega aquí el texto del código.</p>
+    <form id="escanear" class="form">
+      {% csrf_token %}
+      <label for="codigo">Código QR</label>
+      <textarea id="codigo" rows="3" maxlength="1024" autocomplete="off" required autofocus></textarea>
+      <label for="accion">Movimiento</label>
+      <select id="accion"><option value="entrada">Registrar entrada</option><option value="salida">Registrar salida</option></select>
+      <button class="btn btn-red" type="submit">Validar y registrar →</button>
+    </form>
+    <div id="mensaje" role="status" aria-live="polite"></div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{% static 'fitlife/js/panel.js' %}?v=20261111-2" defer></script>{% endblock %}

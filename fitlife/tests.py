@@ -8,9 +8,10 @@ from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from .services import reservar
+from .forms import ClaseForm, MembresiaForm, PagoForm, RegistroForm, UsuarioCrearForm
 from .models import Clase, Configuracion, ListaEspera, Membresia, Pago, Plan, RegistroAcceso, Reserva, User
 from .views import QR_SALT
-from .services import reservar
 
 
 class FitLifeTests(TestCase):
@@ -346,6 +347,150 @@ class FitLifeTests(TestCase):
         self.assertRedirects(response, "/panel/")
         response = self.client.post("/logout/")
         self.assertRedirects(response, "/")
+
+
+class AdminValidationTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser("admin", password="AdminSegura2026!")
+        self.socio = User.objects.create_user("socio")
+        self.staff = User.objects.create_user("staff", role=User.Role.STAFF)
+        self.plan = Plan.objects.create(nombre="Mensual", precio=100, duracion_dias=30)
+        self.client.force_login(self.admin)
+
+    def test_password_policy_requires_every_condition_for_registration_and_admin(self):
+        valid = "NubeFuerteVerde2026!"
+        missing_requirement = (
+            "CortaA1!", "clavefuerterobusta2026!", "CLAVEFUERTESEGURA2026!",
+            "ClaveFuerteSegura!", "ClaveFuerte2026",
+        )
+        for index, password in enumerate(missing_requirement):
+            with self.subTest(password=password):
+                form = RegistroForm(data={
+                    "username": f"registro{index}",
+                    "email": f"registro{index}@example.com",
+                    "password1": password,
+                    "password2": password,
+                })
+                self.assertFalse(form.is_valid())
+
+        self.assertIn("Mínimo 12 caracteres", RegistroForm().fields["password1"].help_text)
+        self.assertEqual(RegistroForm().fields["password1"].widget.attrs["minlength"], 12)
+        registration = RegistroForm(data={
+            "username": "nueva", "email": "nueva@example.com",
+            "password1": valid, "password2": valid,
+        })
+        self.assertTrue(registration.is_valid(), registration.errors)
+        admin_form = UsuarioCrearForm(data={
+            "username": "nuevo", "first_name": "", "last_name": "",
+            "email": "nuevo@example.com", "role": User.Role.SOCIO,
+            "password1": "ClaveDebil123", "password2": "ClaveDebil123",
+        })
+        self.assertFalse(admin_form.is_valid())
+
+        self.client.logout()
+        response = self.client.post("/registro/", {
+            "username": "debil", "email": "debil@example.com",
+            "password1": "ClaveDebil123", "password2": "ClaveDebil123",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(username="debil").exists())
+
+    def test_fechas_pasadas_se_rechazan_en_las_formas_administrativas(self):
+        ayer = timezone.localdate() - timedelta(days=1)
+        clase_form = ClaseForm(data={
+            "nombre": "Clase pasada", "descripcion": "",
+            "inicio": (timezone.localtime() - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"),
+            "cupo_maximo": 10, "instructor": "", "activa": "on",
+        })
+        self.assertFalse(clase_form.is_valid())
+        self.assertIn("inicio", clase_form.errors)
+
+        membresia_form = MembresiaForm(data={
+            "socio": self.socio.pk, "plan": self.plan.pk,
+            "inicio": ayer.isoformat(), "fin": (ayer + timedelta(days=30)).isoformat(),
+            "estado": Membresia.Estado.ACTIVA,
+        })
+        self.assertFalse(membresia_form.is_valid())
+        self.assertIn("inicio", membresia_form.errors)
+
+        membresia = Membresia.objects.create(
+            socio=self.socio, plan=self.plan,
+            inicio=timezone.localdate(), fin=timezone.localdate() + timedelta(days=30),
+        )
+        pago_form = PagoForm(data={
+            "membresia": membresia.pk, "monto": "100.00",
+            "fecha": (timezone.localtime() - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"),
+            "referencia": "",
+        })
+        self.assertFalse(pago_form.is_valid())
+        self.assertIn("fecha", pago_form.errors)
+
+        api = APIClient()
+        api.force_authenticate(self.staff)
+        clase_response = api.post("/api/clases/", {
+            "nombre": "Clase pasada",
+            "inicio": (timezone.now() - timedelta(days=1)).isoformat(),
+            "cupo_maximo": 10,
+        }, format="json")
+        self.assertEqual(clase_response.status_code, 400)
+        membresia_response = api.post("/api/membresias/", {
+            "socio": self.socio.pk,
+            "plan": self.plan.pk,
+            "inicio": ayer.isoformat(),
+            "fin": (ayer + timedelta(days=30)).isoformat(),
+            "estado": Membresia.Estado.ACTIVA,
+        }, format="json")
+        self.assertEqual(membresia_response.status_code, 400)
+        pago_response = api.post("/api/pagos/", {
+            "membresia": membresia.pk,
+            "monto": "100.00",
+            "fecha": (timezone.now() - timedelta(days=1)).isoformat(),
+        }, format="json")
+        self.assertEqual(pago_response.status_code, 400)
+
+        self.assertEqual(
+            ClaseForm().fields["inicio"].widget.attrs["min"][:10],
+            timezone.localdate().isoformat(),
+        )
+        self.assertEqual(
+            MembresiaForm().fields["inicio"].widget.attrs["min"],
+            timezone.localdate().isoformat(),
+        )
+        self.assertEqual(
+            PagoForm().fields["fecha"].widget.attrs["min"][:10],
+            timezone.localdate().isoformat(),
+        )
+
+    def test_historial_con_fecha_pasada_se_puede_editar_sin_cambiarla(self):
+        pasada = timezone.localtime() - timedelta(days=2)
+        clase = Clase.objects.create(nombre="Histórica", inicio=pasada, cupo_maximo=10)
+        clase_form = ClaseForm(instance=clase, data={
+            "nombre": "Clase histórica editada", "descripcion": "",
+            "inicio": pasada.strftime("%Y-%m-%dT%H:%M"),
+            "cupo_maximo": 10, "instructor": "", "activa": "on",
+        })
+        self.assertTrue(clase_form.is_valid(), clase_form.errors)
+
+        membresia = Membresia.objects.create(
+            socio=self.socio, plan=self.plan,
+            inicio=timezone.localdate() - timedelta(days=30),
+            fin=timezone.localdate() - timedelta(days=1),
+        )
+        membresia_form = MembresiaForm(instance=membresia, data={
+            "socio": self.socio.pk, "plan": self.plan.pk,
+            "inicio": membresia.inicio.isoformat(), "fin": membresia.fin.isoformat(),
+            "estado": Membresia.Estado.VENCIDA,
+        })
+        self.assertTrue(membresia_form.is_valid(), membresia_form.errors)
+
+        pago_fecha = pasada.replace(second=0, microsecond=0)
+        pago = Pago.objects.create(membresia=membresia, monto=100, fecha=pago_fecha)
+        pago_form = PagoForm(instance=pago, data={
+            "membresia": membresia.pk, "monto": "100.00",
+            "fecha": timezone.localtime(pago_fecha).strftime("%Y-%m-%dT%H:%M"),
+            "referencia": "Edición histórica",
+        })
+        self.assertTrue(pago_form.is_valid(), pago_form.errors)
 
 
 class ReservaConcurrencyTests(TransactionTestCase):

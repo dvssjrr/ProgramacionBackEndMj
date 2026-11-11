@@ -94,6 +94,27 @@ def crear_pedido(socio):
 
 
 @transaction.atomic
+def simular_pago(pedido_id, socio, metodo, resultado):
+    """Guarda el resultado demostrativo sin cobrar ni confirmar la compra."""
+    socio = User.objects.select_for_update().get(pk=socio.pk)
+    exigir_socio(socio)
+    pedido = get_object_or_404(Pedido.objects.select_for_update(), pk=pedido_id, socio=socio)
+    if pedido.estado != Pedido.Estado.PENDIENTE:
+        raise ValidationError("Solo se pueden simular pagos de pedidos pendientes.")
+    if metodo not in Pedido.MetodoPagoSimulado.values:
+        raise ValidationError("Selecciona tarjeta de crédito o débito.")
+    if resultado not in Pedido.ResultadoPagoSimulado.values:
+        raise ValidationError("El resultado de la simulación no es válido.")
+    pedido.metodo_pago_simulado = metodo
+    pedido.resultado_pago_simulado = resultado
+    pedido.simulacion_actualizada = timezone.now()
+    pedido.save(update_fields=[
+        "metodo_pago_simulado", "resultado_pago_simulado", "simulacion_actualizada",
+    ])
+    return pedido
+
+
+@transaction.atomic
 def confirmar_pedido(pedido_id, operador):
     """Valida stock y membresía, y confirma toda la venta en una transacción."""
     pedido = get_object_or_404(Pedido.objects.select_for_update(), pk=pedido_id)

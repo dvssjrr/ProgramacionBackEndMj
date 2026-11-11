@@ -73,6 +73,17 @@ def panel(request):
 
 
 @login_required
+def acceso_gimnasio(request):
+    """Muestra el lector de QR solo al personal de recepción y administración."""
+    if not es_equipo(request.user):
+        raise PermissionDenied
+    return render(request, "fitlife/acceso.html", {
+        "dentro": User.objects.filter(dentro=True).count(),
+        "capacidad": Configuracion.objects.filter(pk=1).first(),
+    })
+
+
+@login_required
 def gestionar_clases(request, clase_id=None):
     if not es_equipo(request.user):
         raise PermissionDenied

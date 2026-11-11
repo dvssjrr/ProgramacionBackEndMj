@@ -4,12 +4,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .models import CarritoItem, Pedido, Plan, Producto, User
 from .permissions import es_equipo
-from .shop import agregar, cambiar_cantidad, cancelar_pedido, confirmar_pedido, crear_pedido, exigir_socio
+from .shop import (agregar, cambiar_cantidad, cancelar_pedido, confirmar_pedido,
+                   crear_pedido, exigir_socio, simular_pago)
 
 
 def tienda(request):
@@ -64,13 +65,44 @@ def actualizar_item(request, pk):
 @login_required
 @require_POST
 def solicitar(request):
-    # Crear el pedido no cobra dinero: el pago se confirma en recepcion.
+    # El pedido pendiente abre el simulador, que nunca cobra ni confirma la venta.
     try:
         pedido = crear_pedido(request.user)
-        messages.success(request, f"Pedido #{pedido.pk} creado. Paga en recepción para confirmarlo.")
+        return redirect("pagar_pedido", pk=pedido.pk)
     except ValidationError as exc:
         messages.error(request, "; ".join(exc.messages))
     return redirect("carrito")
+
+
+@login_required
+def pagar_pedido(request, pk):
+    try:
+        exigir_socio(request.user)
+    except ValidationError:
+        raise PermissionDenied
+    pedido = get_object_or_404(
+        Pedido.objects.prefetch_related("items"),
+        pk=pk, socio=request.user,
+    )
+    if request.method == "POST":
+        try:
+            metodo = request.POST.get("metodo", "")
+            resultado = request.POST.get("resultado", "")
+            pedido = simular_pago(pk, request.user, metodo, resultado)
+            if pedido.resultado_pago_simulado == Pedido.ResultadoPagoSimulado.APROBADO:
+                messages.success(
+                    request,
+                    "Simulación aprobada. No se realizó un cobro; recepción debe confirmar el pago real.",
+                )
+            else:
+                messages.error(
+                    request,
+                    "Simulación rechazada. No se realizó un cobro y el pedido sigue pendiente.",
+                )
+            return redirect("pagar_pedido", pk=pk)
+        except ValidationError as exc:
+            messages.error(request, "; ".join(exc.messages))
+    return render(request, "fitlife/pago_simulado.html", {"pedido": pedido})
 
 
 @login_required

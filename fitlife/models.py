@@ -126,10 +126,21 @@ class Pedido(models.Model):
         CONFIRMADO = "confirmado", "Pago confirmado"
         CANCELADO = "cancelado", "Cancelado"
 
+    class MetodoPagoSimulado(models.TextChoices):
+        CREDITO = "credito", "Tarjeta de crédito"
+        DEBITO = "debito", "Tarjeta de débito"
+
+    class ResultadoPagoSimulado(models.TextChoices):
+        APROBADO = "aprobado", "Simulación aprobada"
+        RECHAZADO = "rechazado", "Simulación rechazada"
+
     socio = models.ForeignKey(User, on_delete=models.PROTECT, related_name="pedidos")
     creado = models.DateTimeField(auto_now_add=True)
     estado = models.CharField(max_length=10, choices=Estado.choices, default=Estado.PENDIENTE)
     total = models.DecimalField(max_digits=12, decimal_places=2)
+    metodo_pago_simulado = models.CharField(max_length=10, choices=MetodoPagoSimulado.choices, blank=True)
+    resultado_pago_simulado = models.CharField(max_length=10, choices=ResultadoPagoSimulado.choices, blank=True)
+    simulacion_actualizada = models.DateTimeField(null=True, blank=True)
     confirmado_por = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="pedidos_confirmados")
     confirmado_en = models.DateTimeField(null=True, blank=True)
     membresia = models.OneToOneField(Membresia, on_delete=models.PROTECT, null=True, blank=True)

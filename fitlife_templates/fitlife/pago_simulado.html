@@ -1,0 +1,55 @@
+{% extends "fitlife/base.html" %}
+{% load static %}
+{% block title %}Pago de prueba | FitLife{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'fitlife/css/pago.css' %}?v=1">{% endblock %}
+{% block content %}
+<main class="wrap section payment-page">
+  <a class="inline-link" href="{% url 'carrito' %}">← Volver a mis pedidos</a>
+  <div class="section-head">
+    <div><span class="eyebrow red">PAGO DE PRUEBA / PEDIDO #{{ pedido.pk }}</span><h1>SIMULADOR<br>DE <em>PAGO.</em></h1></div>
+    <p>Selecciona un medio y prueba una aprobación o un rechazo. Es una demostración: no se mueve dinero.</p>
+  </div>
+  <div class="payment-grid">
+    <section class="surface payment-options">
+      <span class="eyebrow red">MÉTODO DE PAGO</span>
+      <h2>¿Cómo deseas pagar?</h2>
+      <p class="muted">En una integración real, crédito y débito se procesarían en una pasarela segura.</p>
+      <form method="post" class="form">{% csrf_token %}
+        <fieldset class="method-list">
+          <legend class="sr-only">Selecciona crédito o débito</legend>
+          <label class="method-option"><input type="radio" name="metodo" value="credito" {% if pedido.metodo_pago_simulado != 'debito' %}checked{% endif %}><span><strong>Tarjeta de crédito</strong><small>Simula una compra con crédito.</small></span><b>CRÉDITO</b></label>
+          <label class="method-option"><input type="radio" name="metodo" value="debito" {% if pedido.metodo_pago_simulado == 'debito' %}checked{% endif %}><span><strong>Tarjeta de débito</strong><small>Simula un pago con saldo disponible.</small></span><b>DÉBITO</b></label>
+        </fieldset>
+        <div class="test-card" aria-label="Tarjeta gráfica ficticia">
+          <div class="test-card-top"><span>FITLIFE <b>PAY</b></span><span class="test-chip" aria-hidden="true"></span></div>
+          <strong class="test-card-number">•••• &nbsp; •••• &nbsp; •••• &nbsp; 4242</strong>
+          <div class="test-card-bottom"><span>SOLO TARJETA DE PRUEBA</span><b>TEST</b></div>
+        </div>
+        <div class="simulation-warning" role="note"><strong>Modo demostración</strong><span>No ingreses número real, vencimiento, PIN ni CVV. Este simulador no solicita ni almacena datos de tarjeta.</span></div>
+        {% if pedido.estado == 'pendiente' %}
+          <div class="simulation-actions">
+            <button class="btn btn-red" type="submit" name="resultado" value="aprobado">Simular aprobación</button>
+            <button class="btn btn-outline" type="submit" name="resultado" value="rechazado">Simular rechazo</button>
+          </div>
+        {% else %}
+          <div class="alert error">Este pedido ya no está pendiente; no se pueden hacer más simulaciones.</div>
+        {% endif %}
+      </form>
+      {% if pedido.resultado_pago_simulado %}
+        <div class="simulation-result {% if pedido.resultado_pago_simulado == 'aprobado' %}approved{% else %}rejected{% endif %}" role="status">
+          <strong>{{ pedido.get_resultado_pago_simulado_display }}</strong>
+          <span>{{ pedido.get_metodo_pago_simulado_display }} · {{ pedido.simulacion_actualizada|date:"d/m/Y H:i" }}</span>
+          {% if pedido.estado == 'pendiente' %}<span>El pedido sigue pendiente. Recepción debe verificar y confirmar el pago real.</span>{% endif %}
+        </div>
+      {% endif %}
+    </section>
+    <aside class="surface order-summary">
+      <span class="eyebrow red">RESUMEN</span><h2>Tu pedido</h2>
+      <ul>{% for item in pedido.items.all %}<li><span>{{ item.nombre }} × {{ item.cantidad }}</span><strong>${{ item.subtotal }}</strong></li>{% endfor %}</ul>
+      <div class="summary-total"><span>Total demostrativo</span><strong>${{ pedido.total }}</strong></div>
+      <p class="muted">Pedido {{ pedido.get_estado_display }}. No se reserva inventario ni se activa una membresía por aprobar esta simulación.</p>
+      <a class="btn btn-outline btn-small" href="{% url 'carrito' %}">Ver mis pedidos</a>
+    </aside>
+  </div>
+</main>
+{% endblock %}
