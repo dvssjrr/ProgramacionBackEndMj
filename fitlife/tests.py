@@ -322,6 +322,29 @@ class FitLifeTests(TestCase):
         self.assertEqual(self.client.get("/panel/clases/").status_code, 403)
         self.assertEqual(self.client.get("/api/accesos/").status_code, 403)
 
+    def test_instructor_ve_clases_asignadas_hoy_y_futuras(self):
+        instructor = User.objects.create_user(username="instructor", role=User.Role.INSTRUCTOR)
+        otro = User.objects.create_user(username="otro_instructor", role=User.Role.INSTRUCTOR)
+        ahora = timezone.now()
+        hoy = Clase.objects.create(nombre="Hoy", inicio=ahora, cupo_maximo=3, instructor=instructor)
+        futura = Clase.objects.create(
+            nombre="Futura", inicio=ahora + timedelta(days=2), cupo_maximo=3, instructor=instructor,
+        )
+        Clase.objects.create(nombre="Anterior", inicio=ahora - timedelta(days=2), cupo_maximo=3, instructor=instructor)
+        Clase.objects.create(nombre="Inactiva", inicio=ahora + timedelta(days=2), cupo_maximo=3, instructor=instructor, activa=False)
+        Clase.objects.create(nombre="De otro", inicio=ahora + timedelta(days=2), cupo_maximo=3, instructor=otro)
+        Reserva.objects.create(clase=futura, socio=self.socio)
+
+        self.client.force_login(instructor)
+        response = self.client.get("/panel/")
+        self.assertEqual(list(response.context["clases_instructor"]), [hoy, futura])
+        self.assertContains(response, "Futura")
+        self.assertContains(response, timezone.localtime(futura.inicio).strftime("%d/%m/%Y %H:%M"))
+        self.assertContains(response, "socio")
+        self.assertNotContains(response, "Anterior")
+        self.assertNotContains(response, "Inactiva")
+        self.assertNotContains(response, "De otro")
+
     def test_gestion_clases_y_proteccion_de_cupos(self):
         instructor = User.objects.create_user(username="instructor", role=User.Role.INSTRUCTOR)
         self.client.force_login(self.staff)

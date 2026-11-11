@@ -44,7 +44,7 @@ Abre `http://127.0.0.1:8000/`. Para probar el proyecto:
 - `/registro/` — registrar un socio.
 - `/panel/` — panel según el rol.
 - `/panel/ingreso/` — escáner QR para recepción y administración.
-- `/tienda/` — planes y productos.
+- `/tienda/` — planes y productos; permite buscar productos por nombre o descripción y filtrarlos por categoría. El equipo asigna categorías desde la gestión de productos. Los productos existentes quedan en «Otros» hasta que se editen.
 - `/api/` — API REST.
 - `/evaluacion/` — administrador Django de solo lectura para superusuarios.
 

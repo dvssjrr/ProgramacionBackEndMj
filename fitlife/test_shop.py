@@ -19,6 +19,60 @@ class TiendaTests(TestCase):
         self.plan = Plan.objects.create(nombre="Mensual", precio="100.00", duracion_dias=30)
         self.producto = Producto.objects.create(nombre="Botella", precio="15.00", stock=2)
 
+    def test_busqueda_y_categoria_filtran_productos_sin_afectar_planes(self):
+        proteina = Producto.objects.create(
+            nombre="Proteína de vainilla", descripcion="Suplemento para entrenamiento",
+            categoria=Producto.Categoria.PROTEINAS, precio=25, stock=3,
+        )
+        creatina = Producto.objects.create(
+            nombre="Creatina", descripcion="Suplemento para entrenamiento",
+            categoria=Producto.Categoria.CREATINA, precio=20, stock=0,
+        )
+        Producto.objects.create(
+            nombre="Proteína inactiva", categoria=Producto.Categoria.PROTEINAS,
+            precio=10, stock=1, activo=False,
+        )
+
+        respuesta = self.client.get("/tienda/")
+        self.assertEqual(list(respuesta.context["productos"]), [self.producto, creatina, proteina])
+        self.assertContains(respuesta, "Agotado")
+        self.assertContains(respuesta, "Proteínas")
+
+        respuesta = self.client.get("/tienda/", {"q": " ENTRENAMIENTO ", "categoria": "proteinas"})
+        self.assertEqual(list(respuesta.context["productos"]), [proteina])
+        self.assertContains(respuesta, "Mensual")
+        self.assertContains(respuesta, 'value="proteinas" selected')
+        self.assertContains(respuesta, 'value=" ENTRENAMIENTO "')
+
+        respuesta = self.client.get("/tienda/", {"q": "CREATINA"})
+        self.assertEqual(list(respuesta.context["productos"]), [creatina])
+        respuesta = self.client.get("/tienda/", {"categoria": "otros"})
+        self.assertEqual(list(respuesta.context["productos"]), [self.producto])
+        respuesta = self.client.get("/tienda/", {"q": "inexistente"})
+        self.assertContains(respuesta, "No se encontraron productos")
+        self.assertEqual(list(respuesta.context["productos"]), [])
+
+    def test_filtro_invalido_muestra_error_y_no_devuelve_catalogo(self):
+        respuesta = self.client.get("/tienda/", {"categoria": "desconocida"})
+        self.assertFormError(respuesta.context["filtros"], "categoria", "Escoja una opción válida. desconocida no es una de las opciones disponibles.")
+        self.assertEqual(list(respuesta.context["productos"]), [])
+
+    def test_equipo_puede_asignar_y_conservar_categoria(self):
+        self.client.force_login(self.staff)
+        datos = {
+            "nombre": "Creatina", "descripcion": "Monohidrato",
+            "categoria": "creatina", "precio": "20", "stock": 5, "activo": "on",
+        }
+        self.assertEqual(self.client.post("/panel/gestion/productos/", datos).status_code, 302)
+        producto = Producto.objects.get(nombre="Creatina")
+        self.assertEqual(producto.categoria, Producto.Categoria.CREATINA)
+        self.assertContains(self.client.get("/panel/gestion/productos/"), "Creatina")
+        del datos["categoria"]
+        self.assertEqual(self.client.post(f"/panel/gestion/productos/{producto.pk}/", datos).status_code, 302)
+        producto.refresh_from_db()
+        self.assertEqual(producto.categoria, Producto.Categoria.CREATINA)
+        self.assertEqual(list(self.client.get("/tienda/", {"categoria": "creatina"}).context["productos"]), [producto])
+
     def test_pedido_y_confirmacion_no_son_cobro_online(self):
         self.client.force_login(self.socio)
         self.assertEqual(self.client.post(f"/carrito/agregar/plan/{self.plan.pk}/").status_code, 302)

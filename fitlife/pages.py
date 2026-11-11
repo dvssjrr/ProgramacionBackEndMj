@@ -57,7 +57,7 @@ def panel(request):
         })
     elif context["es_instructor"]:
         context["clases_instructor"] = (
-            Clase.objects.filter(instructor=user, activa=True, inicio__date=timezone.localdate())
+            Clase.objects.filter(instructor=user, activa=True, inicio__date__gte=timezone.localdate())
             .prefetch_related("reservas__socio")
         )
     else:

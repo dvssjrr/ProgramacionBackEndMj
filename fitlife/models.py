@@ -87,8 +87,21 @@ class Pago(models.Model):
 
 
 class Producto(models.Model):
+    class Categoria(models.TextChoices):
+        PROTEINAS = "proteinas", "Proteínas"
+        CREATINA = "creatina", "Creatina"
+        PRE_ENTRENO = "pre_entreno", "Pre-entreno"
+        AMINOACIDOS = "aminoacidos", "Aminoácidos"
+        VITAMINAS = "vitaminas", "Vitaminas y minerales"
+        BARRAS = "barras", "Barras y snacks"
+        ACCESORIOS = "accesorios", "Accesorios"
+        ROPA = "ropa", "Ropa deportiva"
+        BEBIDAS = "bebidas", "Bebidas"
+        OTROS = "otros", "Otros"
+
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True)
+    categoria = models.CharField("categoría", max_length=20, choices=Categoria.choices, default=Categoria.OTROS)
     precio = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     stock = models.PositiveIntegerField(default=0)
     activo = models.BooleanField(default=True)

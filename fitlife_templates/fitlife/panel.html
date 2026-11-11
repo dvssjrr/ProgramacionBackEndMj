@@ -13,7 +13,7 @@
     </nav>
   </aside>
   <main class="panel" id="resumen">
-    <div class="panel-heading"><div><span class="eyebrow red">TU ESPACIO / {% if es_equipo %}GESTIÓN{% elif es_instructor %}INSTRUCTOR{% else %}SOCIO{% endif %}</span><h1>HOLA, {{ user.first_name|default:user.username|upper }}<span class="red">.</span></h1><p class="muted">{% if es_equipo %}Todo lo que necesitas para gestionar tu gimnasio.{% elif es_instructor %}Tus clases y alumnos para hoy, en un solo lugar.{% else %}Tu entrenamiento, tus clases y tu progreso.{% endif %}</p></div><span class="status-pill"><span class="dot"></span> EN LÍNEA</span></div>
+    <div class="panel-heading"><div><span class="eyebrow red">TU ESPACIO / {% if es_equipo %}GESTIÓN{% elif es_instructor %}INSTRUCTOR{% else %}SOCIO{% endif %}</span><h1>HOLA, {{ user.first_name|default:user.username|upper }}<span class="red">.</span></h1><p class="muted">{% if es_equipo %}Todo lo que necesitas para gestionar tu gimnasio.{% elif es_instructor %}Tus clases y alumnos de hoy y próximos días, en un solo lugar.{% else %}Tu entrenamiento, tus clases y tu progreso.{% endif %}</p></div><span class="status-pill"><span class="dot"></span> EN LÍNEA</span></div>
     <div id="mensaje" role="status" aria-live="polite"></div>
     {# El servidor decide que informacion mostrar segun el rol autenticado. #}
     {% if es_equipo %}
@@ -33,8 +33,8 @@
         </div>
       </section>
     {% elif es_instructor %}
-      <section class="panel-section" id="mis-clases"><div class="subheading"><div><span class="eyebrow red">TU AGENDA</span><h2>Clases de hoy</h2></div></div>
-        {% for clase in clases_instructor %}<article class="surface class-list"><div><span class="eyebrow red">{{ clase.inicio|date:"H:i" }}</span><h3>{{ clase.nombre }}</h3><p class="muted">{{ clase.reservas.count }} / {{ clase.cupo_maximo }} reservas confirmadas</p></div><div><strong>Lista de alumnos</strong><ul>{% for reserva in clase.reservas.all %}<li>{{ reserva.socio.get_full_name|default:reserva.socio.username }}</li>{% empty %}<li>Sin alumnos inscritos.</li>{% endfor %}</ul></div></article>{% empty %}<div class="empty">No tienes clases asignadas para hoy.</div>{% endfor %}
+      <section class="panel-section" id="mis-clases"><div class="subheading"><div><span class="eyebrow red">TU AGENDA</span><h2>Clases de hoy y próximas</h2></div></div>
+        {% for clase in clases_instructor %}<article class="surface class-list"><div><span class="eyebrow red">{{ clase.inicio|date:"d/m/Y H:i" }}</span><h3>{{ clase.nombre }}</h3><p class="muted">{{ clase.reservas.count }} / {{ clase.cupo_maximo }} reservas confirmadas</p></div><div><strong>Lista de alumnos</strong><ul>{% for reserva in clase.reservas.all %}<li>{{ reserva.socio.get_full_name|default:reserva.socio.username }}</li>{% empty %}<li>Sin alumnos inscritos.</li>{% endfor %}</ul></div></article>{% empty %}<div class="empty">No tienes clases activas asignadas para hoy ni para los próximos días.</div>{% endfor %}
       </section>
     {% else %}
       <p><a class="btn btn-outline btn-small" href="{% url 'tienda' %}">Explorar tienda ↗</a> <a class="btn btn-outline btn-small" href="{% url 'carrito' %}">Mi carrito y pedidos ↗</a></p>

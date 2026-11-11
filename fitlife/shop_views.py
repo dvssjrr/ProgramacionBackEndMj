@@ -4,10 +4,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .models import CarritoItem, Pedido, Plan, Producto, User
+from .forms import FiltroProductosForm
 from .permissions import es_equipo
 from .shop import (agregar, cambiar_cantidad, cancelar_pedido, confirmar_pedido,
                    crear_pedido, exigir_socio, simular_pago)
@@ -15,9 +17,22 @@ from .shop import (agregar, cambiar_cantidad, cancelar_pedido, confirmar_pedido,
 
 def tienda(request):
     # El catalogo es publico, pero solo los socios activos pueden comprar.
+    productos = Producto.objects.filter(activo=True).order_by("nombre")
+    filtros = FiltroProductosForm(request.GET or None)
+    if filtros.is_bound:
+        if filtros.is_valid():
+            busqueda = filtros.cleaned_data["q"]
+            categoria = filtros.cleaned_data["categoria"]
+            if busqueda:
+                productos = productos.filter(Q(nombre__icontains=busqueda) | Q(descripcion__icontains=busqueda))
+            if categoria:
+                productos = productos.filter(categoria=categoria)
+        else:
+            productos = productos.none()
     return render(request, "fitlife/tienda.html", {
         "planes": Plan.objects.filter(activo=True).order_by("precio"),
-        "productos": Producto.objects.filter(activo=True).order_by("nombre"),
+        "productos": productos,
+        "filtros": filtros,
         "puede_comprar": request.user.is_authenticated and request.user.role == User.Role.SOCIO and not request.user.is_superuser,
     })
 

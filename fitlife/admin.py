@@ -113,8 +113,8 @@ class ConfiguracionAdmin(SoloLectura, admin.ModelAdmin):
 
 @admin.register(Producto, site=fitlife_admin)
 class ProductoAdmin(SoloLectura, admin.ModelAdmin):
-    list_display = ("nombre", "precio", "stock", "activo")
-    list_filter = ("activo",)
+    list_display = ("nombre", "categoria", "precio", "stock", "activo")
+    list_filter = ("activo", "categoria")
     search_fields = ("nombre",)
 
 

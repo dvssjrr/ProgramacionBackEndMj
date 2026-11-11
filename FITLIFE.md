@@ -12,7 +12,8 @@ pedidos. Está desarrollado con Django, Django REST Framework y PostgreSQL.
    permite la entrada; una vencida o congelada la deniega.
 3. **Clases:** desde el panel del socio, reserva una clase. Si no quedan cupos,
    se agrega a la lista de espera; una plaza liberada puede asignarse al primero
-   que cumpla los requisitos.
+   que cumpla los requisitos. El instructor ve sus clases activas asignadas de
+   hoy y de los próximos días, junto con sus alumnos.
 4. **Aforo:** recepción consulta personas dentro y porcentaje de ocupación.
    Se actualiza periódicamente; no usa WebSocket ni bloquea entradas al superar
    la capacidad.

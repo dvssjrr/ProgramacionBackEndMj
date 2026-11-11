@@ -111,7 +111,22 @@ class PlanForm(forms.ModelForm):
 class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
-        fields = ("nombre", "descripcion", "precio", "stock", "activo")
+        fields = ("nombre", "descripcion", "categoria", "precio", "stock", "activo")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["categoria"].required = False
+
+    def clean_categoria(self):
+        return self.cleaned_data["categoria"] or self.instance.categoria or Producto.Categoria.OTROS
+
+
+class FiltroProductosForm(forms.Form):
+    q = forms.CharField(label="Buscar productos", required=False, max_length=100)
+    categoria = forms.ChoiceField(
+        label="Categoría", required=False,
+        choices=[("", "Todas las categorías"), *Producto.Categoria.choices],
+    )
 
 
 class MembresiaForm(forms.ModelForm):

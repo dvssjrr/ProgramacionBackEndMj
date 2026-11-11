@@ -9,9 +9,15 @@
     {% for plan in planes %}<article class="card plan-card"><h3>{{ plan.nombre }}</h3><p>{{ plan.descripcion }}</p><p class="price">${{ plan.precio }} <small>/ {{ plan.duracion_dias }} días</small></p>
     {% if puede_comprar %}<form method="post" action="{% url 'agregar_articulo' 'plan' plan.pk %}">{% csrf_token %}<button class="btn btn-red">Añadir plan</button></form>{% elif not user.is_authenticated %}<a class="btn btn-outline" href="{% url 'login' %}?next={% url 'tienda' %}">Iniciar sesión para comprar</a>{% else %}<p>Las compras están disponibles para socios.</p>{% endif %}</article>
     {% empty %}<div class="empty">No hay planes disponibles.</div>{% endfor %}</div></section>
-  <section class="panel-section"><h2>Productos del gimnasio</h2><div class="cards">
-    {% for producto in productos %}<article class="card plan-card"><h3>{{ producto.nombre }}</h3><p>{{ producto.descripcion }}</p><p>Disponibles: {{ producto.stock }}</p><p class="price">${{ producto.precio }}</p>
+  <section class="panel-section" id="productos"><h2>Productos del gimnasio</h2>
+    <form method="get" action="{% url 'tienda' %}#productos" class="form shop-filters">
+      <div><label for="{{ filtros.q.id_for_label }}">{{ filtros.q.label }}</label>{{ filtros.q }}{% if filtros.q.errors %}<div class="field-error">{{ filtros.q.errors }}</div>{% endif %}</div>
+      <div><label for="{{ filtros.categoria.id_for_label }}">{{ filtros.categoria.label }}</label>{{ filtros.categoria }}{% if filtros.categoria.errors %}<div class="field-error">{{ filtros.categoria.errors }}</div>{% endif %}</div>
+      <div class="shop-filter-actions"><button class="btn btn-red" type="submit">Buscar</button><a class="btn btn-outline" href="{% url 'tienda' %}#productos">Limpiar</a></div>
+    </form>
+    <div class="cards">
+    {% for producto in productos %}<article class="card plan-card"><h3>{{ producto.nombre }}</h3><p>{{ producto.get_categoria_display }}</p><p>{{ producto.descripcion }}</p><p>Disponibles: {{ producto.stock }}</p><p class="price">${{ producto.precio }}</p>
     {% if puede_comprar and producto.stock %}<form method="post" action="{% url 'agregar_articulo' 'producto' producto.pk %}">{% csrf_token %}<button class="btn btn-red">Añadir al carrito</button></form>{% elif not producto.stock %}<span>Agotado</span>{% elif not user.is_authenticated %}<a class="btn btn-outline" href="{% url 'login' %}?next={% url 'tienda' %}">Iniciar sesión para comprar</a>{% else %}<p>Las compras están disponibles para socios.</p>{% endif %}</article>
-    {% empty %}<div class="empty">Pronto encontrarás productos aquí.</div>{% endfor %}</div></section>
+    {% empty %}<div class="empty">{% if filtros.is_bound %}No se encontraron productos para los filtros seleccionados.{% else %}Pronto encontrarás productos aquí.{% endif %}</div>{% endfor %}</div></section>
 </main>
 {% endblock %}
